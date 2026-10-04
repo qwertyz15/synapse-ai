@@ -71,12 +71,18 @@ def load_chroma_db():
 
 
 def database_search_func(query: str) -> str:
-    """Searches chroma_db for information in the company's handbook."""
+    """Searches the documents the user has uploaded (PDF, Word, text, Markdown).
+
+    Use for questions about the user's own files, organization, policies or projects.
+    Returns the most relevant passages, each labeled with its source file and page.
+    """
     # Get the chroma retriever
     retriever = load_chroma_db()
 
     # Search the database for relevant documents
     documents = retriever.invoke(query)
+    if not documents:
+        return "No matching passages found in the uploaded documents."
 
     # Format the documents into a string
     context_str = format_contexts(documents)
@@ -85,4 +91,4 @@ def database_search_func(query: str) -> str:
 
 
 database_search: BaseTool = tool(database_search_func)
-database_search.name = "Database_Search"  # Update name with the purpose of your database
+database_search.name = "DocumentSearch"  # Update name with the purpose of your database

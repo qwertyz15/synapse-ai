@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from core import settings
 from ingestion import IngestionReport, run_ingestion
 from ingestion.loader import SUPPORTED_EXTENSIONS
-from ingestion.manifest import MANIFEST_FILENAME, Manifest
+from ingestion.manifest import list_indexed_documents
 from schema import IngestionResult, RagDocument, RagDocuments
 
 logger = logging.getLogger(__name__)
@@ -61,17 +61,10 @@ def _result(report: IngestionReport, rejected: dict[str, str] | None = None) -> 
 @router.get("/documents")
 def list_documents() -> RagDocuments:
     """List the documents currently indexed for the RAG assistant."""
-    if not (Path(settings.CHROMA_DB_PATH) / MANIFEST_FILENAME).exists():
-        return RagDocuments(documents=[])
-    manifest = Manifest(settings.CHROMA_DB_PATH)
-    try:
-        rows = manifest.documents()
-    finally:
-        manifest.close()
     return RagDocuments(
         documents=[
             RagDocument(doc_id=d, file_type=t, chunk_count=c, ingested_at=at)
-            for d, t, c, at in rows
+            for d, t, c, at in list_indexed_documents(settings.CHROMA_DB_PATH)
         ]
     )
 

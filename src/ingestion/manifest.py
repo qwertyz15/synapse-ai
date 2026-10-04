@@ -5,6 +5,17 @@ from pathlib import Path
 MANIFEST_FILENAME = "ingestion_manifest.sqlite"
 
 
+def list_indexed_documents(db_dir: str | Path) -> list[tuple[str, str, int, str]]:
+    """(doc_id, file_type, chunk_count, ingested_at) rows, without creating a missing manifest."""
+    if not (Path(db_dir) / MANIFEST_FILENAME).exists():
+        return []
+    manifest = Manifest(db_dir)
+    try:
+        return manifest.documents()
+    finally:
+        manifest.close()
+
+
 class Manifest:
     """Record of what has been indexed, stored next to the vector store so the two reset together."""
 

@@ -56,7 +56,8 @@ client = get_client()
 
 st.title("📄 Documents")
 st.caption(
-    "Documents uploaded here are searched by the **rag-assistant** agent. "
+    "Documents uploaded here are searched by the **research-assistant** (alongside web search) "
+    "and **rag-assistant** (documents only) agents. "
     "Uploading a file with an existing name replaces it."
 )
 

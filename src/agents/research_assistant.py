@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Literal
 
@@ -11,9 +12,12 @@ from langgraph.managed import RemainingSteps
 from langgraph.prebuilt import ToolNode
 
 from agents.safeguard import Safeguard, SafeguardOutput, SafetyAssessment
-from agents.tools import calculator
+from agents.tools import calculator, database_search
 from agents.utils import handle_tool_error
 from core import get_model, settings
+from ingestion.manifest import list_indexed_documents
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(MessagesState, total=False):
@@ -30,7 +34,7 @@ class AgentState(MessagesState, total=False):
 web_search = DuckDuckGoSearchResults(
     name="WebSearch", api_wrapper=DuckDuckGoSearchAPIWrapper(region="us-en")
 )
-tools = [web_search, calculator]
+tools = [web_search, calculator, database_search]
 
 # Add weather tool if API key is set
 # Register for an API key at https://openweathermap.org/api/
@@ -40,16 +44,47 @@ if settings.OPENWEATHERMAP_API_KEY:
     )
     tools.append(OpenWeatherMapQueryRun(name="Weather", api_wrapper=wrapper))
 
-current_date = datetime.now().strftime("%B %d, %Y")
-instructions = f"""
-    You are a helpful research assistant with the ability to search the web and use other tools.
+MAX_LISTED_DOCUMENTS = 50
+
+
+def describe_documents() -> str:
+    try:
+        doc_ids = [row[0] for row in list_indexed_documents(settings.CHROMA_DB_PATH)]
+    except Exception:
+        logger.exception("Could not read the document index")
+        return "The list of uploaded documents is unavailable right now."
+    if not doc_ids:
+        return "The user hasn't uploaded any documents, so DocumentSearch will find nothing."
+    listed = ", ".join(doc_ids[:MAX_LISTED_DOCUMENTS])
+    more = len(doc_ids) - MAX_LISTED_DOCUMENTS
+    if more > 0:
+        listed += f", and {more} more"
+    return f"The user has uploaded these documents, searchable with DocumentSearch: {listed}."
+
+
+def build_instructions() -> str:
+    # Built per call so the date and document list stay current in a long-running service.
+    current_date = datetime.now().strftime("%B %d, %Y")
+    return f"""
+    You are a helpful research assistant with the ability to search the web, search the user's
+    uploaded documents, and use other tools.
     Today's date is {current_date}.
+
+    {describe_documents()}
 
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
     A few things to remember:
-    - Please include markdown-formatted links to any citations used in your response. Only include one
-    or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
+    - Choose tools by where the answer lives. Use DocumentSearch first for anything the uploaded
+      documents might cover: questions about the user's organization, policies, projects, or
+      anything named in those documents. Use WebSearch for public or current information. Use
+      both when a question needs both. Answer directly without tools for general knowledge.
+    - When an answer comes from the documents, cite the file and page shown in the search result,
+      e.g. (Employee Handbook, page 4). If the documents don't contain the answer, say so before
+      falling back to other sources.
+    - For web results, include markdown-formatted links to any citations used in your response.
+      Only include one or two citations per response unless more are needed. ONLY USE LINKS
+      RETURNED BY THE TOOLS.
     - Use calculator tool with numexpr to answer math questions. The user does not understand numexpr,
       so for the final response, use human readable format - e.g. "300 * 200", not "(300 \\times 200)".
     - If a tool fails, try another tool that can answer the same question (e.g. WebSearch for the
@@ -60,7 +95,7 @@ instructions = f"""
 def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
     bound_model = model.bind_tools(tools)
     preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=instructions)] + state["messages"],
+        lambda state: [SystemMessage(content=build_instructions())] + state["messages"],
         name="StateModifier",
     )
     return preprocessor | bound_model  # type: ignore[return-value]

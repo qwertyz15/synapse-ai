@@ -1,0 +1,296 @@
+data: {"type": "message", "content": {"type": "custom", "content": "", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69be-7d42-a469-f985ae855028", "response_metadata": {}, "custom_data": {"name": "Simple task 1...", "run_id": "acdada92-dde3-4ee3-915d-48acd0517fc1", "state": "new", "result": null, "data": {}}}}
+
+data: {"type": "message", "content": {"type": "custom", "content": "", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69be-7d42-a469-f985ae855028", "response_metadata": {}, "custom_data": {"name": "Simple task 2...", "run_id": "1b7eea57-e47c-4887-96cb-53e23e4cc894", "state": "new", "result": null, "data": {}}}}
+
+data: {"type": "message", "content": {"type": "custom", "content": "", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69be-7d42-a469-f985ae855028", "response_metadata": {}, "custom_data": {"name": "Simple task 1...", "run_id": "acdada92-dde3-4ee3-915d-48acd0517fc1", "state": "running", "result": null, "data": {"status": "Still running..."}}}}
+
+data: {"type": "message", "content": {"type": "custom", "content": "", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69be-7d42-a469-f985ae855028", "response_metadata": {}, "custom_data": {"name": "Simple task 2...", "run_id": "1b7eea57-e47c-4887-96cb-53e23e4cc894", "state": "complete", "result": "error", "data": {"output": 42}}}}
+
+data: {"type": "message", "content": {"type": "custom", "content": "", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69be-7d42-a469-f985ae855028", "response_metadata": {}, "custom_data": {"name": "Simple task 1...", "run_id": "acdada92-dde3-4ee3-915d-48acd0517fc1", "state": "complete", "result": "success", "data": {"output": 42}}}}
+
+data: {"type": "token", "content": "I"}
+
+data: {"type": "token", "content": " can"}
+
+data: {"type": "token", "content": "\u2019"}
+
+data: {"type": "token", "content": "t"}
+
+data: {"type": "token", "content": " run"}
+
+data: {"type": "token", "content": " background"}
+
+data: {"type": "token", "content": " tasks"}
+
+data: {"type": "token", "content": " directly"}
+
+data: {"type": "token", "content": " from"}
+
+data: {"type": "token", "content": " this"}
+
+data: {"type": "token", "content": " chat"}
+
+data: {"type": "token", "content": " \u2014"}
+
+data: {"type": "token", "content": " I"}
+
+data: {"type": "token", "content": " don"}
+
+data: {"type": "token", "content": "\u2019"}
+
+data: {"type": "token", "content": "t"}
+
+data: {"type": "token", "content": " have"}
+
+data: {"type": "token", "content": " access"}
+
+data: {"type": "token", "content": " to"}
+
+data: {"type": "token", "content": " your"}
+
+data: {"type": "token", "content": " machine"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " shell"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " or"}
+
+data: {"type": "token", "content": " scheduler"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " and"}
+
+data: {"type": "token", "content": " I"}
+
+data: {"type": "token", "content": " can"}
+
+data: {"type": "token", "content": "\u2019"}
+
+data: {"type": "token", "content": "t"}
+
+data: {"type": "token", "content": " keep"}
+
+data: {"type": "token", "content": " a"}
+
+data: {"type": "token", "content": " process"}
+
+data: {"type": "token", "content": " running"}
+
+data: {"type": "token", "content": " after"}
+
+data: {"type": "token", "content": " responding"}
+
+data: {"type": "token", "content": ".\n\n"}
+
+data: {"type": "token", "content": "If"}
+
+data: {"type": "token", "content": " you"}
+
+data: {"type": "token", "content": " share"}
+
+data: {"type": "token", "content": " what"}
+
+data: {"type": "token", "content": " you"}
+
+data: {"type": "token", "content": " want"}
+
+data: {"type": "token", "content": " to"}
+
+data: {"type": "token", "content": " run"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " I"}
+
+data: {"type": "token", "content": " can"}
+
+data: {"type": "token", "content": " help"}
+
+data: {"type": "token", "content": " you"}
+
+data: {"type": "token", "content": " set"}
+
+data: {"type": "token", "content": " it"}
+
+data: {"type": "token", "content": " up"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " for"}
+
+data: {"type": "token", "content": " example"}
+
+data: {"type": "token", "content": ":\n\n"}
+
+data: {"type": "token", "content": "-"}
+
+data: {"type": "token", "content": " Linux"}
+
+data: {"type": "token", "content": "/m"}
+
+data: {"type": "token", "content": "ac"}
+
+data: {"type": "token", "content": "OS"}
+
+data: {"type": "token", "content": ":"}
+
+data: {"type": "token", "content": " `"}
+
+data: {"type": "token", "content": "n"}
+
+data: {"type": "token", "content": "oh"}
+
+data: {"type": "token", "content": "up"}
+
+data: {"type": "token", "content": " ./"}
+
+data: {"type": "token", "content": "task"}
+
+data: {"type": "token", "content": ".sh"}
+
+data: {"type": "token", "content": " >"}
+
+data: {"type": "token", "content": " task"}
+
+data: {"type": "token", "content": ".log"}
+
+data: {"type": "token", "content": " "}
+
+data: {"type": "token", "content": "2"}
+
+data: {"type": "token", "content": ">&"}
+
+data: {"type": "token", "content": "1"}
+
+data: {"type": "token", "content": " &"}
+
+data: {"type": "token", "content": "`\n"}
+
+data: {"type": "token", "content": "-"}
+
+data: {"type": "token", "content": " `"}
+
+data: {"type": "token", "content": "system"}
+
+data: {"type": "token", "content": "d"}
+
+data: {"type": "token", "content": "`"}
+
+data: {"type": "token", "content": " service"}
+
+data: {"type": "token", "content": "/t"}
+
+data: {"type": "token", "content": "imer"}
+
+data: {"type": "token", "content": "\n"}
+
+data: {"type": "token", "content": "-"}
+
+data: {"type": "token", "content": " `"}
+
+data: {"type": "token", "content": "c"}
+
+data: {"type": "token", "content": "ron"}
+
+data: {"type": "token", "content": "`"}
+
+data: {"type": "token", "content": " job"}
+
+data: {"type": "token", "content": "\n"}
+
+data: {"type": "token", "content": "-"}
+
+data: {"type": "token", "content": " Windows"}
+
+data: {"type": "token", "content": " Task"}
+
+data: {"type": "token", "content": " S"}
+
+data: {"type": "token", "content": "cheduler"}
+
+data: {"type": "token", "content": "\n"}
+
+data: {"type": "token", "content": "-"}
+
+data: {"type": "token", "content": " CI"}
+
+data: {"type": "token", "content": "/CD"}
+
+data: {"type": "token", "content": " scheduled"}
+
+data: {"type": "token", "content": " workflow"}
+
+data: {"type": "token", "content": "\n"}
+
+data: {"type": "token", "content": "-"}
+
+data: {"type": "token", "content": " Python"}
+
+data: {"type": "token", "content": ":"}
+
+data: {"type": "token", "content": " `"}
+
+data: {"type": "token", "content": "sub"}
+
+data: {"type": "token", "content": "process"}
+
+data: {"type": "token", "content": "`,"}
+
+data: {"type": "token", "content": " `"}
+
+data: {"type": "token", "content": "sche"}
+
+data: {"type": "token", "content": "dule"}
+
+data: {"type": "token", "content": "`,"}
+
+data: {"type": "token", "content": " `"}
+
+data: {"type": "token", "content": "APS"}
+
+data: {"type": "token", "content": "cheduler"}
+
+data: {"type": "token", "content": "`,"}
+
+data: {"type": "token", "content": " Cel"}
+
+data: {"type": "token", "content": "ery"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " etc"}
+
+data: {"type": "token", "content": ".\n\n"}
+
+data: {"type": "token", "content": "What"}
+
+data: {"type": "token", "content": "\u2019"}
+
+data: {"type": "token", "content": "s"}
+
+data: {"type": "token", "content": " the"}
+
+data: {"type": "token", "content": " task"}
+
+data: {"type": "token", "content": " or"}
+
+data: {"type": "token", "content": " command"}
+
+data: {"type": "token", "content": " you"}
+
+data: {"type": "token", "content": " want"}
+
+data: {"type": "token", "content": " to"}
+
+data: {"type": "token", "content": " run"}
+
+data: {"type": "token", "content": "?"}
+
+data: {"type": "message", "content": {"type": "ai", "content": "I can\u2019t run background tasks directly from this chat \u2014 I don\u2019t have access to your machine, shell, or scheduler, and I can\u2019t keep a process running after responding.\n\nIf you share what you want to run, I can help you set it up, for example:\n\n- Linux/macOS: `nohup ./task.sh > task.log 2>&1 &`\n- `systemd` service/timer\n- `cron` job\n- Windows Task Scheduler\n- CI/CD scheduled workflow\n- Python: `subprocess`, `schedule`, `APScheduler`, Celery, etc.\n\nWhat\u2019s the task or command you want to run?", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69be-7d42-a469-f985ae855028", "response_metadata": {"finish_reason": "stop", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: [DONE]
+

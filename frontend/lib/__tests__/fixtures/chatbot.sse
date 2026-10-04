@@ -1,0 +1,18 @@
+data: {"type": "token", "content": "Hi"}
+
+data: {"type": "token", "content": " there"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " how"}
+
+data: {"type": "token", "content": " are"}
+
+data: {"type": "token", "content": " you"}
+
+data: {"type": "token", "content": "?"}
+
+data: {"type": "message", "content": {"type": "ai", "content": "Hi there, how are you?", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2d066dc5e89", "response_metadata": {"finish_reason": "stop", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: [DONE]
+

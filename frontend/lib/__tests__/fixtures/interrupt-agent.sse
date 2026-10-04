@@ -1,0 +1,104 @@
+data: {"type": "token", "content": "I"}
+
+data: {"type": "token", "content": " can"}
+
+data: {"type": "token", "content": "\u2019"}
+
+data: {"type": "token", "content": "t"}
+
+data: {"type": "token", "content": " book"}
+
+data: {"type": "token", "content": " trips"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " but"}
+
+data: {"type": "token", "content": " I"}
+
+data: {"type": "token", "content": " can"}
+
+data: {"type": "token", "content": " tell"}
+
+data: {"type": "token", "content": " you"}
+
+data: {"type": "token", "content": " your"}
+
+data: {"type": "token", "content": " zodiac"}
+
+data: {"type": "token", "content": " sign"}
+
+data: {"type": "token", "content": "\u2014"}
+
+data: {"type": "token", "content": "just"}
+
+data: {"type": "token", "content": " share"}
+
+data: {"type": "token", "content": " your"}
+
+data: {"type": "token", "content": " birth"}
+
+data: {"type": "token", "content": " date"}
+
+data: {"type": "token", "content": "."}
+
+data: {"type": "token", "content": " The"}
+
+data: {"type": "token", "content": " zodiac"}
+
+data: {"type": "token", "content": " signs"}
+
+data: {"type": "token", "content": " originated"}
+
+data: {"type": "token", "content": " in"}
+
+data: {"type": "token", "content": " ancient"}
+
+data: {"type": "token", "content": " Babylonian"}
+
+data: {"type": "token", "content": " astronomy"}
+
+data: {"type": "token", "content": "/"}
+
+data: {"type": "token", "content": "ast"}
+
+data: {"type": "token", "content": "rology"}
+
+data: {"type": "token", "content": " as"}
+
+data: {"type": "token", "content": " a"}
+
+data: {"type": "token", "content": " "}
+
+data: {"type": "token", "content": "12"}
+
+data: {"type": "token", "content": "-part"}
+
+data: {"type": "token", "content": " division"}
+
+data: {"type": "token", "content": " of"}
+
+data: {"type": "token", "content": " the"}
+
+data: {"type": "token", "content": " ecl"}
+
+data: {"type": "token", "content": "iptic"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " later"}
+
+data: {"type": "token", "content": " named"}
+
+data: {"type": "token", "content": " after"}
+
+data: {"type": "token", "content": " constellations"}
+
+data: {"type": "token", "content": "."}
+
+data: {"type": "message", "content": {"type": "ai", "content": "I can\u2019t book trips, but I can tell you your zodiac sign\u2014just share your birth date. The zodiac signs originated in ancient Babylonian astronomy/astrology as a 12-part division of the ecliptic, later named after constellations.", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a30393a6d8b1", "response_metadata": {}, "custom_data": {}}}
+
+data: {"type": "error", "content": "Internal server error"}
+
+data: [DONE]
+

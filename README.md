@@ -1,8 +1,8 @@
 # 🧠 AI Agent Service Toolkit
 
-A full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit.
+A full toolkit for running an AI agent service built with LangGraph, FastAPI and a ChatGPT-style Next.js web UI.
 
-It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [FastAPI](https://fastapi.tiangolo.com/) service to serve it, a client to interact with the service, and a [Streamlit](https://streamlit.io/) app that uses the client to provide a chat interface. Data structures and settings are built with [Pydantic](https://github.com/pydantic/pydantic).
+It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [FastAPI](https://fastapi.tiangolo.com/) service to serve it, a client to interact with the service, a [Next.js](https://nextjs.org/) web UI for chatting with the agents and managing documents, and a legacy [Streamlit](https://streamlit.io/) app. Data structures and settings are built with [Pydantic](https://github.com/pydantic/pydantic).
 
 This project offers a template for you to easily build and run your own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust toolkit.
 
@@ -10,9 +10,20 @@ This project offers a template for you to easily build and run your own agents u
 
 ### The app
 
-<img src="media/app_screenshot.png" width="600" alt="App screenshot">
+<img src="media/web_ui_screenshot.png" width="720" alt="Web UI screenshot">
 
 ### Quickstart
+
+Run everything with one command (needs [uv](https://docs.astral.sh/uv/) and Node.js 20.9+)
+
+```sh
+# At least one LLM API key is required
+echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
+
+./run.sh              # service on :8080, web UI on http://localhost:3000
+./run.sh --ingest     # index the files in ./data for document search first
+./run.sh --streamlit  # also start the legacy Streamlit app on :8501
+```
 
 Run directly in python
 
@@ -40,6 +51,8 @@ Run with docker
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 docker compose watch
 ```
+
+The web UI is then at http://localhost:3000 and the Streamlit app at http://localhost:8501.
 
 ### Architecture Diagram
 
@@ -70,7 +83,8 @@ The repository is structured as follows:
 - `src/core/`: Core modules including LLM definition and settings
 - `src/service/service.py`: FastAPI service to serve the agents
 - `src/client/client.py`: Client to interact with the agent service
-- `src/streamlit_app.py`: Streamlit app providing a chat interface
+- `frontend/`: Next.js web UI (chat, history, documents); see [`frontend/README.md`](frontend/README.md)
+- `src/streamlit_app.py`: Legacy Streamlit app providing a chat interface
 - `tests/`: Unit and integration tests
 
 ## Setup and Usage

@@ -1,0 +1,238 @@
+data: {"type": "token", "content": "I"}
+
+data: {"type": "token", "content": "'ll"}
+
+data: {"type": "token", "content": " do"}
+
+data: {"type": "token", "content": " both"}
+
+data: {"type": "token", "content": " at"}
+
+data: {"type": "token", "content": " once"}
+
+data: {"type": "token", "content": "."}
+
+data: {"type": "message", "content": {"type": "ai", "content": "I'll do both at once.", "tool_calls": [{"name": "Calculator", "args": {"expression": "15/12*7"}, "id": "call_00_PNeYJFYtFGdwn4cQ1ZfW9187", "type": "tool_call"}, {"name": "DocumentSearch", "args": {"query": "PTO days allowance"}, "id": "call_01_eupU2nNlx5yhNoX0VgLi0733", "type": "tool_call"}], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2f9136215d7", "response_metadata": {"finish_reason": "tool_calls", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "tool", "content": "8.75", "tool_calls": [], "tool_call_id": "call_00_PNeYJFYtFGdwn4cQ1ZfW9187", "status": "success", "run_id": "01a1087e-69bf-74c1-9456-a2f9136215d7", "response_metadata": {}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "tool", "content": "[Source: AcmeTech_Employee_Handbook.pdf, page 2]\nRemote employees must ensure their home office setup is secure and conducive to productivity.\nThe company may provide equipment such as laptops, monitors, or ergonomic chairs upon request\nand approval.\nCode of Conduct\nAll employees are expected to adhere to high standards of professional behavior. This includes:\n- Respecting colleagues, clients, and partners.\n- Avoiding any form of discrimination or harassment.\n- Maintaining confidentiality of company and client data.\n- Acting in a manner that reflects positively on AcmeTech.\nViolations of this code may result in disciplinary actions, up to and including termination.\nLeave & Time-Off Policies\nEmployees are entitled to the following types of leave:\n- Paid Time Off (PTO): 15 days per year, accrued monthly.\n- Sick Leave: 5 days per year, non-cumulative.\n- Parental Leave: 12 weeks paid leave following the birth or adoption of a child.\n- Holidays: 10 paid public holidays observed by the company.\nAll leave must be requested in advance through the HR portal, except in emergency situations.\nIT & Security Guidelines\nSecurity is a shared responsibility. Employees must:\n- Use strong, unique passwords and change them regularly.\n- Lock computers when away from desks.\n- Avoid installing unauthorized software.\n- Report any suspicious emails or activity to IT immediately.\nAll work-related data must be stored on company-approved platforms with proper encryption and\nbackup protocols.\n\n[Source: AcmeTech_Employee_Handbook.pdf, page 1]\nAcmeTech Employee Handbook\nWelcome Message\nWelcome to AcmeTech! We're thrilled to have you join our team. Our success depends on the\ncollective energy, creativity, and contributions of all our employees. This handbook is designed to\nintroduce you to our company culture, core policies, and the resources available to support you. We\nencourage open communication and a collaborative spirit in everything we do.\nCompany Mission & Values\nOur mission at AcmeTech is to develop cutting-edge software solutions that help businesses\nstreamline their operations and achieve new heights. We are committed to:\n- Innovation: Continuously improving our technology and services.\n- Integrity: Acting honestly and ethically in all that we do.\n- Customer Focus: Putting our clients' needs first.\n- Teamwork: Valuing diverse perspectives and working together to solve challenges.\n- Excellence: Striving for the highest quality in every project.\nWork Hours & Attendance\nOur regular office hours are 9:00 AM to 5:00 PM, Monday through Friday. We offer flexibility when\npossible, and some teams may have varying schedules. Punctuality and consistent attendance are\nimportant to maintain productivity and team coordination.\nIf you're unable to attend work due to illness or an emergency, please notify your supervisor as early\nas possible. Chronic absenteeism or tardiness may lead to disciplinary action.\nRemote Work Policy\nAcmeTech supports a hybrid work model. Employees may work remotely up to three days per week,\nwith approval from their manager. Employees are expected to maintain communication, meet\ndeadlines, and be available during core hours (10:00 AM to 3:00 PM).\n\n[Source: AcmeTech_Employee_Handbook.pdf, page 3]\nEmployee Benefits Overview\nAcmeTech is proud to offer a comprehensive benefits package, including:\n- Health Insurance: Medical, dental, and vision coverage with flexible plans.\n- Financial Benefits: 401(k) with company match, performance bonuses, and equity options.\n- Professional Development: Access to courses, certifications, and conference opportunities.\n- Wellness Programs: Gym membership reimbursement and mental health support.\nDetails about eligibility and enrollment can be found in the Benefits Portal or by contacting HR.\nContact & Support\nIf you have questions or need support, reach out:\n- HR: hr@acmetech.com or (555) 123-4567\n- IT Support: it@acmetech.com or (555) 987-6543\n- Facilities & Office Admin: admin@acmetech.com\nWe're here to ensure you have everything you need to succeed.", "tool_calls": [], "tool_call_id": "call_01_eupU2nNlx5yhNoX0VgLi0733", "status": "success", "run_id": "01a1087e-69bf-74c1-9456-a2f9136215d7", "response_metadata": {}, "custom_data": {}}}
+
+data: {"type": "token", "content": "Here"}
+
+data: {"type": "token", "content": " are"}
+
+data: {"type": "token", "content": " both"}
+
+data: {"type": "token", "content": " answers"}
+
+data: {"type": "token", "content": ":\n\n"}
+
+data: {"type": "token", "content": "**"}
+
+data: {"type": "token", "content": "Calculator"}
+
+data: {"type": "token", "content": ":**"}
+
+data: {"type": "token", "content": " "}
+
+data: {"type": "token", "content": "15"}
+
+data: {"type": "token", "content": "/"}
+
+data: {"type": "token", "content": "12"}
+
+data: {"type": "token", "content": "*"}
+
+data: {"type": "token", "content": "7"}
+
+data: {"type": "token", "content": " ="}
+
+data: {"type": "token", "content": " **"}
+
+data: {"type": "token", "content": "8"}
+
+data: {"type": "token", "content": "."}
+
+data: {"type": "token", "content": "75"}
+
+data: {"type": "token", "content": "**\n\n"}
+
+data: {"type": "token", "content": "**"}
+
+data: {"type": "token", "content": "Handbook"}
+
+data: {"type": "token", "content": " P"}
+
+data: {"type": "token", "content": "TO"}
+
+data: {"type": "token", "content": ":**"}
+
+data: {"type": "token", "content": " Employees"}
+
+data: {"type": "token", "content": " get"}
+
+data: {"type": "token", "content": " **"}
+
+data: {"type": "token", "content": "15"}
+
+data: {"type": "token", "content": " days"}
+
+data: {"type": "token", "content": " of"}
+
+data: {"type": "token", "content": " P"}
+
+data: {"type": "token", "content": "TO"}
+
+data: {"type": "token", "content": " per"}
+
+data: {"type": "token", "content": " year"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " accrued"}
+
+data: {"type": "token", "content": " monthly"}
+
+data: {"type": "token", "content": "**"}
+
+data: {"type": "token", "content": " ("}
+
+data: {"type": "token", "content": "Ac"}
+
+data: {"type": "token", "content": "me"}
+
+data: {"type": "token", "content": "Tech"}
+
+data: {"type": "token", "content": "_"}
+
+data: {"type": "token", "content": "Employee"}
+
+data: {"type": "token", "content": "_"}
+
+data: {"type": "token", "content": "Handbook"}
+
+data: {"type": "token", "content": ".pdf"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " page"}
+
+data: {"type": "token", "content": " "}
+
+data: {"type": "token", "content": "2"}
+
+data: {"type": "token", "content": ").\n\n"}
+
+data: {"type": "token", "content": "For"}
+
+data: {"type": "token", "content": " context"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " that"}
+
+data: {"type": "token", "content": " page"}
+
+data: {"type": "token", "content": " also"}
+
+data: {"type": "token", "content": " lists"}
+
+data: {"type": "token", "content": " the"}
+
+data: {"type": "token", "content": " other"}
+
+data: {"type": "token", "content": " leave"}
+
+data: {"type": "token", "content": " types"}
+
+data: {"type": "token", "content": ":"}
+
+data: {"type": "token", "content": " Sick"}
+
+data: {"type": "token", "content": " Leave"}
+
+data: {"type": "token", "content": " ("}
+
+data: {"type": "token", "content": "5"}
+
+data: {"type": "token", "content": " days"}
+
+data: {"type": "token", "content": "/year"}
+
+data: {"type": "token", "content": ","}
+
+data: {"type": "token", "content": " non"}
+
+data: {"type": "token", "content": "-c"}
+
+data: {"type": "token", "content": "um"}
+
+data: {"type": "token", "content": "ulative"}
+
+data: {"type": "token", "content": "),"}
+
+data: {"type": "token", "content": " Parent"}
+
+data: {"type": "token", "content": "al"}
+
+data: {"type": "token", "content": " Leave"}
+
+data: {"type": "token", "content": " ("}
+
+data: {"type": "token", "content": "12"}
+
+data: {"type": "token", "content": " weeks"}
+
+data: {"type": "token", "content": " paid"}
+
+data: {"type": "token", "content": "),"}
+
+data: {"type": "token", "content": " and"}
+
+data: {"type": "token", "content": " "}
+
+data: {"type": "token", "content": "10"}
+
+data: {"type": "token", "content": " paid"}
+
+data: {"type": "token", "content": " public"}
+
+data: {"type": "token", "content": " holidays"}
+
+data: {"type": "token", "content": "."}
+
+data: {"type": "token", "content": " All"}
+
+data: {"type": "token", "content": " leave"}
+
+data: {"type": "token", "content": " must"}
+
+data: {"type": "token", "content": " be"}
+
+data: {"type": "token", "content": " requested"}
+
+data: {"type": "token", "content": " in"}
+
+data: {"type": "token", "content": " advance"}
+
+data: {"type": "token", "content": " through"}
+
+data: {"type": "token", "content": " the"}
+
+data: {"type": "token", "content": " HR"}
+
+data: {"type": "token", "content": " portal"}
+
+data: {"type": "token", "content": " except"}
+
+data: {"type": "token", "content": " in"}
+
+data: {"type": "token", "content": " emergencies"}
+
+data: {"type": "token", "content": "."}
+
+data: {"type": "message", "content": {"type": "ai", "content": "Here are both answers:\n\n**Calculator:** 15/12*7 = **8.75**\n\n**Handbook PTO:** Employees get **15 days of PTO per year, accrued monthly** (AcmeTech_Employee_Handbook.pdf, page 2).\n\nFor context, that page also lists the other leave types: Sick Leave (5 days/year, non-cumulative), Parental Leave (12 weeks paid), and 10 paid public holidays. All leave must be requested in advance through the HR portal except in emergencies.", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2f9136215d7", "response_metadata": {"finish_reason": "stop", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: [DONE]
+

@@ -1,0 +1,18 @@
+data: {"type": "message", "content": {"type": "ai", "content": "", "tool_calls": [{"name": "transfer_to_sub-agent-math_expert", "args": {}, "id": "call_00_zrQkAvIDCNowDL4jhLbF5287", "type": "tool_call"}], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {"finish_reason": "tool_calls", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "tool", "content": "Successfully transferred to sub-agent-math_expert", "tool_calls": [], "tool_call_id": "call_00_zrQkAvIDCNowDL4jhLbF5287", "status": "success", "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "ai", "content": "", "tool_calls": [{"name": "multiply", "args": {"a": 23, "b": 7}, "id": "call_00_jMr12TMv7dQ3iIv8bbNu7673", "type": "tool_call"}], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {"finish_reason": "tool_calls", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "tool", "content": "161.0", "tool_calls": [], "tool_call_id": "call_00_jMr12TMv7dQ3iIv8bbNu7673", "status": "success", "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "ai", "content": "23 \u00d7 7 = **161**", "tool_calls": [], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {"finish_reason": "stop", "model_name": "deepseek-flash", "system_fingerprint": "aeb56401ca74e127821c4f9126dcb669", "model_provider": "openai"}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "ai", "content": "Transferring back to supervisor", "tool_calls": [{"name": "transfer_back_to_supervisor", "args": {}, "id": "50713db8-c690-4263-a5d7-3bde3f7bd2c8", "type": "tool_call"}], "tool_call_id": null, "status": null, "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {"__is_handoff_back": true}, "custom_data": {}}}
+
+data: {"type": "message", "content": {"type": "tool", "content": "Successfully transferred back to supervisor", "tool_calls": [], "tool_call_id": "50713db8-c690-4263-a5d7-3bde3f7bd2c8", "status": "success", "run_id": "01a1087e-69bf-74c1-9456-a2eb29d13f4b", "response_metadata": {}, "custom_data": {}}}
+
+data: {"type": "error", "content": "Internal server error"}
+
+data: [DONE]
+

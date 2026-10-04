@@ -1,0 +1,5 @@
+components/ui
+.next
+node_modules
+next-env.d.ts
+lib/__tests__/fixtures

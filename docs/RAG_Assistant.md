@@ -2,6 +2,18 @@
 
 You can build a RAG assistant using a Chroma database.
 
+## Choosing an embedding provider
+
+The database is built and searched with the same embedding model, configured in `.env`:
+
+| Provider | Settings | Default model |
+|---|---|---|
+| OpenAI (default) | `OPENAI_API_KEY` | `text-embedding-ada-002` |
+| [Voyage AI](https://www.voyageai.com/) | `EMBEDDING_PROVIDER=voyage`, `VOYAGE_API_KEY` | `voyage-4` |
+
+Set `EMBEDDING_MODEL` to use a different model from the same provider. Vectors from different
+models aren't compatible, so rebuild the database after changing the provider or model.
+
 ## Setting up Chroma
 
 To create a Chroma database:

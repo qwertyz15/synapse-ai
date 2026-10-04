@@ -1,14 +1,16 @@
 import os
 import shutil
+import sys
+from pathlib import Path
 
-from dotenv import load_dotenv
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import Docx2txtLoader, PyPDFLoader
-from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# Load environment variables from the .env file
-load_dotenv()
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+# Shared with the RAG search tool so the database is built and queried with the same model.
+from core.embeddings import get_embeddings  # noqa: E402
 
 
 def create_chroma_db(
@@ -18,7 +20,7 @@ def create_chroma_db(
     chunk_size: int = 2000,
     overlap: int = 500,
 ):
-    embeddings = OpenAIEmbeddings(api_key=os.environ["OPENAI_API_KEY"])
+    embeddings = get_embeddings()
 
     # Initialize Chroma vector store
     if delete_chroma_db and os.path.exists(db_name):

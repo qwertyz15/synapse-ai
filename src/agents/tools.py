@@ -4,7 +4,8 @@ import re
 import numexpr
 from langchain_chroma import Chroma
 from langchain_core.tools import BaseTool, tool
-from langchain_openai import OpenAIEmbeddings
+
+from core.embeddings import get_embeddings
 
 
 def calculator_func(expression: str) -> str:
@@ -48,16 +49,8 @@ def format_contexts(docs):
 
 
 def load_chroma_db():
-    # Create the embedding function for our project description database
-    try:
-        embeddings = OpenAIEmbeddings()
-    except Exception as e:
-        raise RuntimeError(
-            "Failed to initialize OpenAIEmbeddings. Ensure the OpenAI API key is set."
-        ) from e
-
     # Load the stored vector database
-    chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+    chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=get_embeddings())
     retriever = chroma_db.as_retriever(search_kwargs={"k": 5})
     return retriever
 

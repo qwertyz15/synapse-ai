@@ -37,6 +37,11 @@ class DatabaseType(StrEnum):
     MONGO = "mongo"
 
 
+class EmbeddingProvider(StrEnum):
+    OPENAI = "openai"
+    VOYAGE = "voyage"
+
+
 class LogLevel(StrEnum):
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -102,6 +107,11 @@ class Settings(BaseSettings):
     COMPATIBLE_BASE_URL: str | None = None
 
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
+
+    # Embeddings for the RAG assistant's Chroma database
+    EMBEDDING_PROVIDER: EmbeddingProvider = EmbeddingProvider.OPENAI
+    EMBEDDING_MODEL: str | None = None
+    VOYAGE_API_KEY: SecretStr | None = None
 
     # MCP Configuration
     GITHUB_PAT: SecretStr | None = None

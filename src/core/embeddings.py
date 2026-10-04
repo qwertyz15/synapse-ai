@@ -15,6 +15,16 @@ DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"
 DEFAULT_VOYAGE_EMBEDDING_MODEL = "voyage-4"
 
 
+def embedding_signature() -> str:
+    """Identifies the configured provider and model, to detect when an index must be rebuilt."""
+    match settings.EMBEDDING_PROVIDER:
+        case EmbeddingProvider.OPENAI:
+            model = settings.EMBEDDING_MODEL or DEFAULT_OPENAI_EMBEDDING_MODEL
+        case EmbeddingProvider.VOYAGE:
+            model = settings.EMBEDDING_MODEL or DEFAULT_VOYAGE_EMBEDDING_MODEL
+    return f"{settings.EMBEDDING_PROVIDER}:{model}"
+
+
 def get_embeddings() -> Embeddings:
     match settings.EMBEDDING_PROVIDER:
         case EmbeddingProvider.OPENAI:

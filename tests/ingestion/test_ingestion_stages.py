@@ -1,0 +1,106 @@
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+from langchain_core.documents import Document
+
+from agents.tools import format_contexts, load_chroma_db
+from ingestion.changes import detect_changes
+from ingestion.chunking import chunk_document
+from ingestion.cleaning import clean_pages, clean_text
+from ingestion.loader import LocalFolderConnector, hash_file
+from ingestion.models import ParsedPage, SourceDocument
+from ingestion.parsers import parse
+
+SAMPLE_PDF = Path(__file__).parents[2] / "data" / "AcmeTech_Employee_Handbook.pdf"
+
+
+def _doc(doc_id: str, content_hash: str = "h") -> SourceDocument:
+    return SourceDocument(
+        doc_id=doc_id, path=Path(doc_id), file_type="txt", content_hash=content_hash
+    )
+
+
+def test_loader_filters_extensions_and_uses_relative_ids(tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "a.txt").write_text("a")
+    (tmp_path / "sub" / "b.MD").write_text("b")
+    (tmp_path / "image.png").write_bytes(b"\x89PNG")
+
+    docs = list(LocalFolderConnector(tmp_path).iter_documents())
+
+    assert [d.doc_id for d in docs] == ["a.txt", "sub/b.MD"]
+    assert [d.file_type for d in docs] == ["txt", "md"]
+    assert docs[0].content_hash == hash_file(tmp_path / "a.txt")
+
+
+def test_detect_changes_covers_all_states():
+    current = [_doc("same", "1"), _doc("edited", "new-hash"), _doc("added", "3")]
+    indexed = {"same": "1", "edited": "old-hash", "removed": "4"}
+
+    changes = detect_changes(current, indexed)
+
+    assert [d.doc_id for d in changes.new] == ["added"]
+    assert [d.doc_id for d in changes.updated] == ["edited"]
+    assert [d.doc_id for d in changes.unchanged] == ["same"]
+    assert changes.deleted == ["removed"]
+
+
+def test_parse_text_and_pdf_pages(tmp_path):
+    md = tmp_path / "notes.md"
+    md.write_text("# Title\nBody", encoding="utf-8")
+    assert parse(SourceDocument("notes.md", md, "md", "h")) == [ParsedPage("# Title\nBody")]
+
+    pages = parse(SourceDocument("handbook.pdf", SAMPLE_PDF, "pdf", "h"))
+    assert [p.page for p in pages] == list(range(1, len(pages) + 1))
+    assert any(p.text.strip() for p in pages)
+
+
+def test_clean_text_normalizes_whitespace_and_hyphenation():
+    assert clean_text("Employ-\nee  hand\tbook\r\n\n\n\nNext   ") == "Employee hand book\n\nNext"
+
+
+def test_clean_pages_drops_empty_pages():
+    pages = [ParsedPage("  \n ", 1), ParsedPage(" text ", 2)]
+    assert clean_pages(pages) == [ParsedPage("text", 2)]
+
+
+def test_chunk_document_ids_and_metadata():
+    doc = SourceDocument("docs/guide.pdf", Path("docs/guide.pdf"), "pdf", "abc")
+    pages = [ParsedPage("one " * 30, 1), ParsedPage("two " * 30, 2)]
+
+    chunks = chunk_document(doc, pages, chunk_size=50, chunk_overlap=0)
+
+    assert [c.id for c in chunks] == [f"docs/guide.pdf#{i}" for i in range(len(chunks))]
+    assert {c.metadata["page"] for c in chunks} == {1, 2}
+    first = chunks[0].metadata
+    assert first["doc_id"] == "docs/guide.pdf"
+    assert first["source"] == "guide.pdf"
+    assert first["content_hash"] == "abc"
+    assert first["acl"] == "public"
+
+
+def test_chunk_document_omits_missing_page():
+    doc = SourceDocument("a.txt", Path("a.txt"), "txt", "h")
+    chunks = chunk_document(doc, [ParsedPage("hello")], chunk_size=100, chunk_overlap=0)
+    assert "page" not in chunks[0].metadata
+
+
+def test_load_chroma_db_requires_existing_database(tmp_path):
+    missing = tmp_path / "missing_db"
+    with (
+        patch("agents.tools.settings.CHROMA_DB_PATH", str(missing)),
+        pytest.raises(FileNotFoundError, match="scripts/ingest.py"),
+    ):
+        load_chroma_db()
+    assert not missing.exists()
+
+
+def test_format_contexts_cites_source_and_page():
+    docs = [
+        Document(page_content="Leave policy", metadata={"source": "handbook.pdf", "page": 4}),
+        Document(page_content="Notes", metadata={"source": "notes.md"}),
+    ]
+    assert format_contexts(docs) == (
+        "[Source: handbook.pdf, page 4]\nLeave policy\n\n[Source: notes.md]\nNotes"
+    )

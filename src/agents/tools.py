@@ -1,11 +1,14 @@
 import math
+import os
 import re
 
 import numexpr
-from langchain_chroma import Chroma
+from langchain_core.documents import Document
 from langchain_core.tools import BaseTool, tool
 
+from core import settings
 from core.embeddings import get_embeddings
+from ingestion.index import open_vectorstore
 
 
 def calculator_func(expression: str) -> str:
@@ -43,14 +46,26 @@ calculator: BaseTool = tool(calculator_func)
 calculator.name = "Calculator"
 
 
+def format_context(doc: Document) -> str:
+    source = doc.metadata.get("source", "unknown")
+    page = doc.metadata.get("page")
+    citation = f"{source}, page {page}" if page is not None else source
+    return f"[Source: {citation}]\n{doc.page_content}"
+
+
 # Format retrieved documents
 def format_contexts(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
+    return "\n\n".join(format_context(doc) for doc in docs)
 
 
 def load_chroma_db():
-    # Load the stored vector database
-    chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=get_embeddings())
+    # Chroma silently creates an empty database at a missing path (e.g. a wrong working directory).
+    if not os.path.isdir(settings.CHROMA_DB_PATH):
+        raise FileNotFoundError(
+            f"No RAG database at {os.path.abspath(settings.CHROMA_DB_PATH)}. "
+            "Run scripts/ingest.py to create it."
+        )
+    chroma_db = open_vectorstore(settings.CHROMA_DB_PATH, get_embeddings())
     retriever = chroma_db.as_retriever(search_kwargs={"k": 5})
     return retriever
 

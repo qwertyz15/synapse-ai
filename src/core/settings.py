@@ -113,6 +113,12 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str | None = None
     VOYAGE_API_KEY: SecretStr | None = None
 
+    # RAG ingestion pipeline (scripts/ingest.py)
+    RAG_DATA_DIR: str = "./data"
+    CHROMA_DB_PATH: str = "./chroma_db"
+    RAG_CHUNK_SIZE: int = 2000
+    RAG_CHUNK_OVERLAP: int = 500
+
     # MCP Configuration
     GITHUB_PAT: SecretStr | None = None
     MCP_GITHUB_SERVER_URL: str = "https://api.githubcopilot.com/mcp/"

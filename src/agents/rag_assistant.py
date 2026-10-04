@@ -42,8 +42,8 @@ instructions = f"""
 
     A few things to remember:
     - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.
-    - Please include markdown-formatted links to any citations used in your response. Only include one
-    or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
+    - Cite the source file and page shown in each search result, e.g. (Employee Handbook, page 4).
+    Only include one or two citations per response unless more are needed.
     - Only use information from the database. Do not use information from outside sources.
     - If the database search fails, tell the user the handbook is unavailable right now rather than
     answering from memory.

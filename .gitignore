@@ -3,6 +3,9 @@
 checkpoints.db
 checkpoints.db-*
 
+# RAG vector store and ingestion manifest (scripts/ingest.py)
+chroma_db/
+
 # Langgraph
 .langgraph_api/
 

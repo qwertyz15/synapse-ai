@@ -17,6 +17,13 @@ provider or model changes.
 
 ## Ingesting documents
 
+The easiest way is the **Documents** page in the Streamlit app's sidebar. You can upload PDF,
+Word, text and Markdown files there (up to 25 MB each), see what's indexed, and delete documents.
+Uploads go through the service's `/rag/documents` API, which also works under Docker Compose,
+where `./data` and `./chroma_db` are mounted into the service container.
+
+To ingest from the command line instead:
+
 1. Put your documents in `./data` (or set `RAG_DATA_DIR`). PDF, Word (`.docx`), text (`.txt`) and
    Markdown (`.md`) files are supported, including in subfolders.
 2. Assuming you have already followed the [Quickstart](../README.md#quickstart) and activated the

@@ -6,6 +6,9 @@ from schema.schema import (
     ChatMessage,
     Feedback,
     FeedbackResponse,
+    IngestionResult,
+    RagDocument,
+    RagDocuments,
     ServiceMetadata,
     StreamInput,
     ThreadSummary,
@@ -28,4 +31,7 @@ __all__ = [
     "UserThreadsInput",
     "ThreadSummary",
     "UserThreads",
+    "RagDocument",
+    "RagDocuments",
+    "IngestionResult",
 ]

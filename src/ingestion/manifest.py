@@ -30,6 +30,12 @@ class Manifest:
     def close(self) -> None:
         self._conn.close()
 
+    def documents(self) -> list[tuple[str, str, int, str]]:
+        """(doc_id, file_type, chunk_count, ingested_at) for every indexed document."""
+        return self._conn.execute(
+            "SELECT doc_id, file_type, chunk_count, ingested_at FROM documents ORDER BY doc_id"
+        ).fetchall()
+
     def hashes(self) -> dict[str, str]:
         return dict(self._conn.execute("SELECT doc_id, content_hash FROM documents"))
 

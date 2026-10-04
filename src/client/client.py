@@ -2,6 +2,7 @@ import json
 import os
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -10,12 +11,24 @@ from schema import (
     ChatHistoryInput,
     ChatMessage,
     Feedback,
+    IngestionResult,
+    RagDocuments,
     ServiceMetadata,
     StreamInput,
     UserInput,
     UserThreads,
     UserThreadsInput,
 )
+
+
+def _error_detail(e: httpx.HTTPError) -> str:
+    """Prefer the service's `detail` message, e.g. a missing embedding API key."""
+    if isinstance(e, httpx.HTTPStatusError):
+        try:
+            return str(e.response.json()["detail"])
+        except (ValueError, KeyError, TypeError):
+            pass
+    return f"Error: {e}"
 
 
 class AgentClientError(Exception):
@@ -423,3 +436,46 @@ class AgentClient:
                 raise AgentClientError(f"Error: {e}")
 
         return UserThreads.model_validate(response.json())
+
+    def list_documents(self) -> RagDocuments:
+        """List the documents indexed for the RAG assistant."""
+        try:
+            response = httpx.get(
+                f"{self.base_url}/rag/documents", headers=self._headers, timeout=self.timeout
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(_error_detail(e))
+        return RagDocuments.model_validate(response.json())
+
+    def upload_documents(self, files: list[tuple[str, bytes]]) -> IngestionResult:
+        """
+        Upload documents to the RAG assistant and ingest them.
+
+        Args:
+            files (list[tuple[str, bytes]]): (filename, content) pairs.
+        """
+        try:
+            response = httpx.post(
+                f"{self.base_url}/rag/documents",
+                files=[("files", (name, content)) for name, content in files],
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(_error_detail(e))
+        return IngestionResult.model_validate(response.json())
+
+    def delete_document(self, doc_id: str) -> IngestionResult:
+        """Delete a document from the RAG assistant's data folder and index."""
+        try:
+            response = httpx.delete(
+                f"{self.base_url}/rag/documents/{quote(doc_id, safe='/')}",
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(_error_detail(e))
+        return IngestionResult.model_validate(response.json())

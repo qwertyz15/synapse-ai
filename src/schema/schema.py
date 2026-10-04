@@ -89,6 +89,34 @@ class ToolCall(TypedDict):
     type: NotRequired[Literal["tool_call"]]
 
 
+class RagDocument(BaseModel):
+    """A document indexed for the RAG assistant."""
+
+    doc_id: str = Field(description="Path relative to the data folder.", examples=["handbook.pdf"])
+    file_type: str = Field(examples=["pdf"])
+    chunk_count: int = Field(examples=[12])
+    ingested_at: str = Field(description="ISO 8601 timestamp of the last ingestion.")
+
+
+class RagDocuments(BaseModel):
+    documents: list[RagDocument]
+
+
+class IngestionResult(BaseModel):
+    """Outcome of an ingestion run, by doc_id."""
+
+    new: list[str] = []
+    updated: list[str] = []
+    deleted: list[str] = []
+    unchanged: list[str] = []
+    failed: dict[str, str] = Field(default={}, description="doc_id -> error message.")
+    rejected: dict[str, str] = Field(
+        default={}, description="Uploaded filename -> reason it wasn't accepted."
+    )
+    chunks_written: int = 0
+    full_rebuild: bool = False
+
+
 class ChatMessage(BaseModel):
     """Message in a chat."""
 

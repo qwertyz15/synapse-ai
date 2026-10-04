@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
-from langchain_community.utilities import OpenWeatherMapAPIWrapper
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper, OpenWeatherMapAPIWrapper
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
@@ -12,6 +12,7 @@ from langgraph.prebuilt import ToolNode
 
 from agents.safeguard import Safeguard, SafeguardOutput, SafetyAssessment
 from agents.tools import calculator
+from agents.utils import handle_tool_error
 from core import get_model, settings
 
 
@@ -25,7 +26,10 @@ class AgentState(MessagesState, total=False):
     remaining_steps: RemainingSteps
 
 
-web_search = DuckDuckGoSearchResults(name="WebSearch")
+# The wrapper's default region "wt-wt" makes ddgs query the nonexistent wt.wikipedia.org.
+web_search = DuckDuckGoSearchResults(
+    name="WebSearch", api_wrapper=DuckDuckGoSearchAPIWrapper(region="us-en")
+)
 tools = [web_search, calculator]
 
 # Add weather tool if API key is set
@@ -48,6 +52,8 @@ instructions = f"""
     or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
     - Use calculator tool with numexpr to answer math questions. The user does not understand numexpr,
       so for the final response, use human readable format - e.g. "300 * 200", not "(300 \\times 200)".
+    - If a tool fails, try another tool that can answer the same question (e.g. WebSearch for the
+      weather). If nothing works, tell the user plainly what you couldn't find and why.
     """
 
 
@@ -99,7 +105,7 @@ async def block_unsafe_content(state: AgentState, config: RunnableConfig) -> Age
 # Define the graph
 agent = StateGraph(AgentState)
 agent.add_node("model", acall_model)
-agent.add_node("tools", ToolNode(tools))
+agent.add_node("tools", ToolNode(tools, handle_tool_errors=handle_tool_error))
 agent.add_node("guard_input", safeguard_input)
 agent.add_node("block_unsafe_content", block_unsafe_content)
 agent.set_entry_point("guard_input")

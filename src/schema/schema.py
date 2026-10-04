@@ -109,6 +109,11 @@ class ChatMessage(BaseModel):
         default=None,
         examples=["call_Jja7J89XsjrOLA5r!MEOW!SL"],
     )
+    status: Literal["success", "error"] | None = Field(
+        description="Outcome of the tool call, for tool messages.",
+        default=None,
+        examples=["success", "error"],
+    )
     run_id: str | None = Field(
         description="Run ID of the message.",
         default=None,

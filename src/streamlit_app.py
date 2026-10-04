@@ -478,10 +478,17 @@ async def draw_messages(
                             status.write(tool_call["args"])
                             tool_result: ChatMessage = await anext(messages_agen)
 
+                            # The run aborted before the tool returned, e.g. a service error.
                             if tool_result.type != "tool":
-                                st.error(f"Unexpected ChatMessage type: {tool_result.type}")
-                                st.write(tool_result)
-                                st.stop()
+                                if is_new:
+                                    st.session_state.messages.append(tool_result)
+                                for pending in call_results.values():
+                                    pending.update(state="error")
+                                st.error(
+                                    tool_result.content
+                                    or f"Unexpected ChatMessage type: {tool_result.type}"
+                                )
+                                return
 
                             # Record the message if it's new, and update the correct
                             # status container with the result
@@ -491,7 +498,9 @@ async def draw_messages(
                                 status = call_results[tool_result.tool_call_id]
                             status.write("Output:")
                             status.write(tool_result.content)
-                            status.update(state="complete")
+                            status.update(
+                                state="error" if tool_result.status == "error" else "complete"
+                            )
 
             case "custom":
                 # CustomData example used by the bg-task-agent

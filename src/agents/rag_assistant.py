@@ -14,6 +14,7 @@ from langgraph.prebuilt import ToolNode
 
 from agents.safeguard import Safeguard, SafeguardOutput, SafetyAssessment
 from agents.tools import database_search
+from agents.utils import handle_tool_error
 from core import get_model, settings
 
 
@@ -44,6 +45,8 @@ instructions = f"""
     - Please include markdown-formatted links to any citations used in your response. Only include one
     or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
     - Only use information from the database. Do not use information from outside sources.
+    - If the database search fails, tell the user the handbook is unavailable right now rather than
+    answering from memory.
     """
 
 
@@ -95,7 +98,7 @@ async def block_unsafe_content(state: AgentState, config: RunnableConfig) -> Age
 # Define the graph
 agent = StateGraph(AgentState)
 agent.add_node("model", acall_model)
-agent.add_node("tools", ToolNode(tools))
+agent.add_node("tools", ToolNode(tools, handle_tool_errors=handle_tool_error))
 agent.add_node("guard_input", safeguard_input)
 agent.add_node("block_unsafe_content", block_unsafe_content)
 agent.set_entry_point("guard_input")

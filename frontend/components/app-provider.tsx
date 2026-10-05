@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { isVisibleAgent } from "@/lib/agents";
 import { getAllThreads, getInfo } from "@/lib/api";
 import type { ServiceMetadata, ThreadInfo } from "@/lib/types";
 
@@ -59,8 +60,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     getInfo()
-      .then((meta) => {
+      .then((serviceMeta) => {
         if (cancelled) return;
+        const meta = { ...serviceMeta, agents: serviceMeta.agents.filter((a) => isVisibleAgent(a.key)) };
         setInfo(meta);
         setInfoError(null);
         const savedAgent = load(STORAGE_AGENT);

@@ -1,3 +1,15 @@
+// Demo agents kept in the service (and the Streamlit app) but left out of the web UI.
+const HIDDEN_AGENTS = new Set([
+  "langgraph-supervisor-agent",
+  "langgraph-supervisor-hierarchy-agent",
+  "bg-task-agent",
+  "interrupt-agent",
+  "command-agent",
+  "knowledge-base-agent",
+]);
+
+export const isVisibleAgent = (key: string) => !HIDDEN_AGENTS.has(key);
+
 const SUGGESTIONS: Record<string, string[]> = {
   "research-assistant": [
     "How many PTO days do I accrue by September if I started in March?",
@@ -17,19 +29,7 @@ const SUGGESTIONS: Record<string, string[]> = {
     "Give me three ideas for a weekend project",
     "What's the difference between RAG and fine-tuning?",
   ],
-  "langgraph-supervisor-agent": [
-    "What is 23 times 47? Ask the math expert",
-    "Research the population of Tokyo and divide it by 1000",
-  ],
-  "langgraph-supervisor-hierarchy-agent": [
-    "What is 23 times 47? Ask the math expert",
-    "Research the population of Tokyo and divide it by 1000",
-  ],
-  "bg-task-agent": ["Run the background task", "Start a long-running job and report progress"],
-  "interrupt-agent": ["What's my zodiac sign?", "Tell me about my horoscope"],
-  "command-agent": ["Hello! What can you do?", "Tell me a fun fact"],
   "github-mcp-agent": ["List the open issues in my repository", "Show the latest commits"],
-  "knowledge-base-agent": ["What's in the knowledge base?", "Search the knowledge base for onboarding"],
 };
 
 export const suggestionsFor = (agent: string) =>

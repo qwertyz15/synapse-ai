@@ -1,262 +1,192 @@
-# 🧠 AI Agent Service Toolkit
+# 🧠 AI Agent Toolkit
 
-A full toolkit for running an AI agent service built with LangGraph, FastAPI and a ChatGPT-style Next.js web UI.
+A ChatGPT-style AI assistant you run yourself. Chat with a research assistant that combines
+**your documents**, **web search**, a **calculator** and **your GitHub repositories** in one answer,
+built with [LangGraph](https://langchain-ai.github.io/langgraph/), [FastAPI](https://fastapi.tiangolo.com/)
+and a [Next.js](https://nextjs.org/) web UI.
 
-It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [FastAPI](https://fastapi.tiangolo.com/) service to serve it, a client to interact with the service, a [Next.js](https://nextjs.org/) web UI for chatting with the agents and managing documents, and a legacy [Streamlit](https://streamlit.io/) app. Data structures and settings are built with [Pydantic](https://github.com/pydantic/pydantic).
+## Features
 
-This project offers a template for you to easily build and run your own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust toolkit.
+- **ChatGPT-style web UI**: streaming answers, Markdown and code blocks, page citations, tool steps
+  you can expand, stop and retry, light and dark themes, and a mobile layout.
+- **Research assistant**: picks the right tools on its own and combines them in one answer:
+  document search, web search, calculator, weather, and GitHub when connected.
+- **Library**: documents searchable from every chat (PDF, Word, text, Markdown), indexed
+  incrementally into ChromaDB.
+- **Chat attachments**: files attached to one conversation are searchable only there, alongside the
+  library, and are shown on the message they were sent with.
+- **Connectors (MCP)**: **+ → Connectors → GitHub** adds GitHub tools to a chat. Each user connects
+  their own account with OAuth. Access is read-only unless they turn on **Allow changes**.
+- **Chat history**: past conversations grouped by date, with search. Deleting a chat also removes
+  the files attached to it.
+- **No login needed**: each browser gets an anonymous identity. Secrets and GitHub tokens never
+  reach the browser, and tokens are never written to the chat database.
+- **Agent service API**: streaming and non-streaming endpoints, chat history, a Python client, an
+  [AG-UI](docs/AGUI.md) endpoint, and a legacy Streamlit app.
+- **Many model providers**: DeepSeek, OpenAI, Anthropic, Google, Groq, AWS Bedrock, Ollama,
+  OpenRouter and OpenAI-compatible servers.
 
-## Overview
+## Quickstart
 
-### The app
-
-<img src="media/web_ui_screenshot.png" width="720" alt="Web UI screenshot">
-
-### Quickstart
-
-Run everything with one command (needs [uv](https://docs.astral.sh/uv/) and Node.js 20.9+)
+You need [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 20.9 or newer.
 
 ```sh
-# At least one LLM API key is required
-echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
+git clone https://github.com/qwertyz15/agent-service-toolkit.git
+cd agent-service-toolkit
+cp .env.example .env    # then add at least one model API key (see Configuration)
 
-./run.sh              # service on :8080, web UI on http://localhost:3000
-./run.sh --ingest     # index the files in ./data for document search first
-./run.sh --streamlit  # also start the legacy Streamlit app on :8501
+./run.sh                # service on :8080, web UI on http://localhost:3000
 ```
 
-Run directly in python
+`run.sh` installs the dependencies on first run, starts the agent service and the web UI together,
+and stops both on Ctrl+C or if either one exits.
 
-```sh
-# At least one LLM API key is required
-echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
+| Option | What it does |
+|---|---|
+| `./run.sh --ingest` | Index the files in `data/` into the library before starting |
+| `./run.sh --streamlit` | Also start the legacy Streamlit app on port 8501 |
+| `PORT=8090 WEB_PORT=3001 ./run.sh` | Use different ports |
 
-# uv is the recommended way to install agent-service-toolkit, but "pip install ." also works
-# For uv installation options, see: https://docs.astral.sh/uv/getting-started/installation/
-curl -LsSf https://astral.sh/uv/0.12.5/install.sh | sh
+To try the UI without spending API credits, set `USE_FAKE_MODEL=true` in `.env`.
 
-# Install dependencies. "uv sync" creates .venv automatically
-uv sync --frozen
-source .venv/bin/activate
-python src/run_service.py
+## Using the app
 
-# In another shell
-source .venv/bin/activate
-streamlit run src/streamlit_app.py
+| To… | Do this |
+|---|---|
+| Ask anything | Type in the message box. Tool steps such as "Searched documents ✓" appear as the assistant works; click one to see its input and output. |
+| Use a file in one chat | **+ → Attach to this chat**. It appears on your next message and stays searchable for the whole conversation. |
+| Use a file in every chat | **+ → Add to document library**, or open **Library** in the sidebar. |
+| Work with GitHub | **+ → Connectors → GitHub** (connect first if asked), then ask e.g. "List the recent commits in owner/repo". |
+| Let it change things on GitHub | Sidebar **@username → Allow changes**. Without it, every GitHub call is read-only. |
+| Delete a chat | Hover over it in the sidebar, then **⋯ → Delete**. Its attached files are removed too. |
+| Switch assistant or model | The assistant menu is at the top left; the model menu is in the message box. |
+
+## Configuration
+
+Settings live in `.env`; [`.env.example`](.env.example) lists all of them. The ones you're most
+likely to set:
+
+| Setting | Needed for |
+|---|---|
+| `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, … | At least one model provider |
+| `DEFAULT_MODEL` | The model new chats use, e.g. `deepseek-v4-flash` |
+| `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `VOYAGE_API_KEY` | Document search: `openai` (uses `OPENAI_API_KEY`) or `voyage` |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_SLUG`, `WEB_SESSION_SECRET` | Connect GitHub; see [GitHub setup](docs/GitHub_MCP_Agent.md) |
+| `AUTH_SECRET` | Require a bearer token on the agent service API (recommended outside your own machine) |
+| `OPENWEATHERMAP_API_KEY` | The weather tool |
+| `GROQ_API_KEY` | Content moderation (LlamaGuard safeguard) |
+| `DATABASE_TYPE` | Chat storage: `sqlite` (default, `checkpoints.db`), `postgres` or `mongo` |
+
+Provider-specific guides: [Ollama](docs/Ollama.md) ·
+[local GPUs with vLLM / SGLang](docs/Local_GPU_Deployment.md) · [Vertex AI](docs/VertexAI.md) ·
+[RAG and ChromaDB](docs/RAG_Assistant.md) · [file-based credentials](docs/File_Based_Credentials.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+    B[Browser] --> W["Next.js web UI<br/>/api/agent proxy"]
+    W -->|"service token, anonymous user id,<br/>GitHub token only when the connector is on"| S[FastAPI agent service]
+    S --> A[LangGraph agents]
+    A --> T["Tools: DocumentSearch, WebSearch,<br/>Calculator, Weather"]
+    A --> G[GitHub MCP server]
+    T --> C[("ChromaDB<br/>library + chat attachments")]
+    S --> M[("Chat history<br/>SQLite / Postgres / MongoDB")]
 ```
 
-Run with docker
+- **The browser only talks to the web UI.** The web UI's server-side proxy adds the service token
+  and the browser's anonymous user ID, so the agent service needs no CORS and secrets stay off the
+  browser.
+- **GitHub tokens** are kept in an encrypted, httpOnly cookie. They're sent to the service only for
+  chats with the GitHub connector on, and passed to the GitHub tools as run context, which is never
+  saved with the conversation.
+- **Documents** are parsed (pypdf, docx2txt), cleaned, split into ~2,000-character chunks and
+  embedded into ChromaDB. The library lives in the `rag_documents` collection; chat attachments live
+  in `chat_attachments`, tagged with their chat and user. A search returns the best-matching
+  passages, never whole files.
+- **Conversation memory**: every message, tool call and tool result in a chat is saved and sent back
+  to the model on each turn.
+
+## Agents
+
+The web UI shows the agents that are useful day to day; the others stay available through the API
+and the Streamlit app.
+
+| Agent | In the web UI | What it does |
+|---|---|---|
+| `research-assistant` (default) | ✅ | Documents, web search, calculator, weather, and GitHub via the connector |
+| `rag-assistant` | ✅ | Answers only from your documents |
+| `chatbot` | ✅ | Plain chat, no tools |
+| `github-mcp-agent` | API only | GitHub-only agent; superseded by the connector |
+| `langgraph-supervisor-agent`, `langgraph-supervisor-hierarchy-agent`, `bg-task-agent`, `interrupt-agent`, `command-agent`, `knowledge-base-agent` | API only | LangGraph feature demos (supervisors, background tasks, interrupts, `Command`, Bedrock knowledge base) |
+
+To add your own agent, create it in `src/agents/` (copy `chatbot.py` or `research_assistant.py`) and
+register it in `src/agents/agents.py`. It's then served at `/<agent>/invoke` and `/<agent>/stream`
+and appears in the web UI's assistant menu.
+
+## Project structure
+
+```text
+src/
+  agents/        agents, tools and the shared GitHub MCP tools
+  service/       FastAPI service: chat, history, threads, library, attachments, AG-UI
+  ingestion/     document parsing, chunking and ChromaDB indexing
+  memory/        SQLite / Postgres / MongoDB checkpointers
+  core/          settings, model setup, embeddings
+  schema/        API schemas and the model catalog
+  client/        Python AgentClient
+  streamlit_app.py  legacy Streamlit UI
+frontend/        Next.js web UI (see frontend/README.md)
+docker/          Dockerfiles for the service, web UI and Streamlit app
+tests/           Python tests
+scripts/         ingestion, smoke tests and helpers
+docs/            guides
+run.sh           start everything locally
+```
+
+## Docker
 
 ```sh
-echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
+cp .env.example .env    # add your API keys
 docker compose watch
 ```
 
-The web UI is then at <http://localhost:3000> and the Streamlit app at <http://localhost:8501>.
+This starts PostgreSQL, the agent service (port 8080), the web UI (<http://localhost:3000>) and the
+Streamlit app (<http://localhost:8501>), and rebuilds or syncs them when you change code. After
+changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `docker compose up --build`.
 
-### Architecture Diagram
+## API and Python client
 
-<img src="media/agent_architecture.png" width="600" alt="Agent architecture diagram">
+The service's OpenAPI docs are at <http://localhost:8080/redoc>. Main endpoints:
 
-### Key Features
-
-1. **LangGraph Agent and latest features**: A customizable agent built using the LangGraph framework. Implements the latest LangGraph v1.0 features including human in the loop with `interrupt()`, flow control with `Command`, long-term memory with `Store`, and `langgraph-supervisor`.
-1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
-1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
-1. **AG-UI Protocol Support**: Every agent is also served over the [AG-UI protocol](https://docs.ag-ui.com) for connecting AG-UI compatible frontends like CopilotKit - see [docs](docs/AGUI.md).
-1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent, including voice input and output.
-1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
-1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
-1. **Content Moderation**: Implements Safeguard for content moderation (requires Groq API key).
-1. **RAG Agent**: A basic RAG agent implementation using ChromaDB - see [docs](docs/RAG_Assistant.md).
-1. **Chat History**: Lists a user's previous conversations per agent via `/threads`, with a "Previous Chats" sidebar in the Streamlit app.
-1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
-1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
-1. **Testing**: Includes robust unit and integration tests for the full repo.
-
-### Key Files
-
-The repository is structured as follows:
-
-- `src/agents/`: Defines several agents with different capabilities
-- `src/schema/`: Defines the protocol schema
-- `src/core/`: Core modules including LLM definition and settings
-- `src/service/service.py`: FastAPI service to serve the agents
-- `src/client/client.py`: Client to interact with the agent service
-- `frontend/`: Next.js web UI (chat, history, documents); see [`frontend/README.md`](frontend/README.md)
-- `src/streamlit_app.py`: Legacy Streamlit app providing a chat interface
-- `tests/`: Unit and integration tests
-
-## Setup and Usage
-
-1. Clone the repository:
-
-   ```sh
-   git clone https://github.com/qwertyz15/agent-service-toolkit.git
-   cd agent-service-toolkit
-   ```
-
-2. Set up environment variables:
-   Create a `.env` file in the root directory. At least one LLM API key or configuration is required. See the [`.env.example` file](./.env.example) for a full list of available environment variables, including a variety of model provider API keys, header-based authentication, LangSmith tracing, testing and development modes, and OpenWeatherMap API key.
-
-3. You can now run the agent service and the Streamlit app locally, either with Docker or just using Python. The Docker setup is recommended for simpler environment setup and immediate reloading of the services when you make changes to your code.
-
-### Additional setup for specific AI providers
-
-- [Setting up Ollama](docs/Ollama.md)
-- [Running local models on local hardware (vLLM / SGLang)](docs/Local_GPU_Deployment.md)
-- [Setting up VertexAI](docs/VertexAI.md)
-- [Setting up RAG with ChromaDB](docs/RAG_Assistant.md)
-
-### Building or customizing your own agent
-
-To customize the agent for your own use case:
-
-1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
-1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
-1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
-
-### Handling Private Credential files
-
-If your agents or chosen LLM require file-based credential files or certificates, the `privatecredentials/` has been provided for your development convenience. All contents, excluding the `.gitkeep` files, are ignored by git and docker's build process. See [Working with File-based Credentials](docs/File_Based_Credentials.md) for suggested use.
-
-### Docker Setup
-
-This project includes a Docker setup for easy development and deployment. The `compose.yaml` file defines three services: `postgres`, `agent_service` and `streamlit_app`. The `Dockerfile` for each service is in their respective directories.
-
-For local development, we recommend using [docker compose watch](https://docs.docker.com/compose/file-watch/). This feature allows for a smoother development experience by automatically updating your containers when changes are detected in your source code.
-
-1. Make sure you have Docker and Docker Compose (>= [v2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
-
-2. Create a `.env` file from the `.env.example`. At minimum, you need to provide an LLM API key (e.g., OPENAI_API_KEY).
-
-   ```sh
-   cp .env.example .env
-   # Edit .env to add your API keys
-   ```
-
-3. Build and launch the services in watch mode:
-
-   ```sh
-   docker compose watch
-   ```
-
-   This will automatically:
-   - Start a PostgreSQL database service that the agent service connects to
-   - Start the agent service with FastAPI
-   - Start the Streamlit app for the user interface
-
-4. The services will now automatically update when you make changes to your code:
-   - Changes in the relevant python files and directories will trigger updates for the relevant services.
-   - NOTE: If you make changes to the `pyproject.toml` or `uv.lock` files, you will need to rebuild the services by running `docker compose up --build`.
-
-5. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
-
-6. The agent service API will be available at `http://0.0.0.0:8080`. You can also use the OpenAPI docs at `http://0.0.0.0:8080/redoc`.
-
-7. Use `docker compose down` to stop the services.
-
-This setup allows you to develop and test your changes in real-time without manually restarting the services.
-
-### Building other apps on the AgentClient
-
-The repo includes a generic `src/client/client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.
-
-See the `src/run_client.py` file for full examples of how to use the `AgentClient`. A quick example:
+| Endpoint | Purpose |
+|---|---|
+| `POST /{agent}/stream`, `POST /{agent}/invoke` | Chat (streaming or a single reply) |
+| `POST /{agent}/history`, `GET /{agent}/threads`, `DELETE /{agent}/threads/{thread_id}` | Chat history, list and delete |
+| `GET/POST/DELETE /rag/documents` | Library documents |
+| `GET/POST/DELETE /rag/attachments` | Files attached to one chat |
+| `GET /info` | Available agents and models |
+| `POST /agui/{agent}/run` | [AG-UI protocol](docs/AGUI.md) |
 
 ```python
 from client import AgentClient
-client = AgentClient()
 
-response = client.invoke("Tell me a brief joke?")
-response.pretty_print()
-# ================================== Ai Message ==================================
-#
-# A man walked into a library and asked the librarian, "Do you have any books on Pavlov's dogs and Schrödinger's cat?"
-# The librarian replied, "It rings a bell, but I'm not sure if it's here or not."
-
+client = AgentClient("http://localhost:8080")  # sends AUTH_SECRET from the environment if set
+client.invoke("Tell me a brief joke?").pretty_print()
 ```
 
-### Development with LangGraph Studio
+See `src/run_client.py` for streaming and async examples.
 
-The agent supports [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/), the IDE for developing agents in LangGraph.
-
-`langgraph-cli[inmem]` is installed with `uv sync`. You can simply add your `.env` file to the root directory as described above, and then launch LangGraph Studio with `langgraph dev`. Customize `langgraph.json` as needed. See the [local quickstart](https://langchain-ai.github.io/langgraph/cloud/how-tos/studio/quick_start/#local-development-server) to learn more.
-
-### Local development without Docker
-
-You can also run the agent service and the Streamlit app locally without Docker, just using a Python virtual environment.
-
-1. Create a virtual environment and install dependencies:
-
-   ```sh
-   uv sync --frozen
-   source .venv/bin/activate
-   ```
-
-2. Run the FastAPI server:
-
-   ```sh
-   python src/run_service.py
-   ```
-
-3. In a separate terminal, run the Streamlit app:
-
-   ```sh
-   streamlit run src/streamlit_app.py
-   ```
-
-4. Open your browser and navigate to the URL provided by Streamlit (usually `http://localhost:8501`).
-
-## Projects built with or inspired by agent-service-toolkit
-
-The following are a few of the public projects that drew code or inspiration from this repo.
-
-- **[PolyRAG](https://github.com/QuentinFuxa/PolyRAG)** - Extends agent-service-toolkit with RAG capabilities over both PostgreSQL databases and PDF documents.
-- **[alexrisch/agent-web-kit](https://github.com/alexrisch/agent-web-kit)** - A Next.JS frontend for agent-service-toolkit
-- **[raushan-in/dapa](https://github.com/raushan-in/dapa)** - Digital Arrest Protection App (DAPA) enables users to report financial scams and frauds efficiently via a user-friendly platform.
-
-**Please create a pull request editing the README or open a discussion with any new ones to be added!** Would love to include more projects.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-**A note on how this repo is maintained:** this is a solo-maintainer project, and issues, PRs, and discussions are triaged on a roughly biweekly cycle with help from an AI maintenance agent. Thanks for your patience if responses take a week or two — I will do my best to respond to truly urgent issues (vulnerability reports, etc.) or in-progress PRs within a few days. The full automation playbooks are versioned in [`docs/maintenance/`](docs/maintenance/) if you're curious how it works.
-
-Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
-
-1. Ensure you're in the project root directory and have activated your virtual environment.
-
-2. Install the development dependencies and pre-commit hooks:
-
-   ```sh
-   uv sync --frozen
-   pre-commit install
-   ```
-
-3. Run the tests using pytest:
-
-   ```sh
-   pytest
-   ```
-
-### Smoke testing optional dependencies
-
-Some integrations aren't exercised by the unit suite or the default CI run because they
-need real infrastructure: the Postgres and MongoDB checkpointers, the AG-UI endpoint, and
-LangFuse tracing. `scripts/smoke_test.sh` spins up each dependency in Docker, runs the
-service against it, verifies the integration end-to-end (including a check that the
-intended backend was actually used, not a silent SQLite fallback), and tears it down.
+## Development
 
 ```sh
-./scripts/smoke_test.sh                 # default: postgres, mongo, agui
-./scripts/smoke_test.sh mongo           # a single target
-./scripts/smoke_test.sh langfuse        # heavy: starts LangFuse's full self-host stack
-./scripts/smoke_test.sh all             # everything, including langfuse
+uv sync --frozen && pre-commit install   # Python dependencies and git hooks
+uv run pytest                            # Python tests
+cd frontend && npm test && npm run lint  # web UI tests and lint
 ```
 
-These are opt-in confidence checks for a maintainer or agent — not part of CI. Run the
-target that matches what you changed rather than the whole set. The optional add-on
-compose files live in `docker/` (e.g. `docker/compose.mongo.yaml`), layered on top of the
-default `compose.yaml` so the default stack stays lightweight.
+- `scripts/smoke_test.sh` checks the optional integrations against real infrastructure in Docker:
+  Postgres and MongoDB checkpointers, the AG-UI endpoint, and LangFuse tracing.
+- `langgraph dev` opens the agents in [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/).
+- `uv run python scripts/ingest.py` re-indexes `data/` from the command line (`--dry-run`,
+  `--full-rebuild`).

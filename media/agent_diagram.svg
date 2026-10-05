@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 640" width="620" height="640" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .node { fill: #f0fdf4; stroke: #4ade80; stroke-width: 1.6; }
+      .guard { fill: #fefce8; stroke: #facc15; stroke-width: 1.6; }
+      .stop { fill: #fef2f2; stroke: #f87171; stroke-width: 1.6; }
+      .tools { fill: #fff7ed; stroke: #fb923c; stroke-width: 1.6; }
+      .terminal { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 1.6; }
+      .name { font-size: 16px; font-weight: 700; fill: #0f172a; }
+      .desc { font-size: 12px; fill: #475569; }
+      .label { font-size: 12px; fill: #475569; font-style: italic; }
+      .edge { stroke: #64748b; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .cond { stroke: #64748b; stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; marker-end: url(#arrow); }
+      .heading { font-size: 20px; font-weight: 800; fill: #0f172a; }
+    </style>
+  </defs>
+
+  <rect width="620" height="640" fill="#ffffff"/>
+  <text x="310" y="36" text-anchor="middle" class="heading">Research Assistant graph</text>
+
+  <rect x="250" y="58" width="120" height="40" rx="20" class="terminal"/>
+  <text x="310" y="83" text-anchor="middle" class="name">start</text>
+
+  <rect x="210" y="138" width="200" height="64" rx="12" class="guard"/>
+  <text x="310" y="164" text-anchor="middle" class="name">guard_input</text>
+  <text x="310" y="186" text-anchor="middle" class="desc">safety check (LlamaGuard)</text>
+
+  <rect x="210" y="282" width="200" height="74" rx="12" class="node"/>
+  <text x="310" y="310" text-anchor="middle" class="name">model</text>
+  <text x="310" y="330" text-anchor="middle" class="desc">instructions + chat history</text>
+  <text x="310" y="346" text-anchor="middle" class="desc">decides: answer or call tools</text>
+
+  <rect x="16" y="412" width="200" height="104" rx="12" class="tools"/>
+  <text x="116" y="440" text-anchor="middle" class="name">tools</text>
+  <text x="116" y="462" text-anchor="middle" class="desc">DocumentSearch · WebSearch</text>
+  <text x="116" y="480" text-anchor="middle" class="desc">Calculator · Weather</text>
+  <text x="116" y="498" text-anchor="middle" class="desc">GitHub (when connected)</text>
+
+  <rect x="420" y="282" width="180" height="74" rx="12" class="stop"/>
+  <text x="510" y="312" text-anchor="middle" class="name">block_unsafe</text>
+  <text x="510" y="334" text-anchor="middle" class="desc">explains why it was flagged</text>
+
+  <rect x="250" y="568" width="120" height="40" rx="20" class="terminal"/>
+  <text x="310" y="593" text-anchor="middle" class="name">end</text>
+
+  <path d="M310,98 L310,136" class="edge"/>
+  <path d="M310,202 L310,280" class="cond"/>
+  <text x="318" y="246" class="label">safe</text>
+  <path d="M410,170 L510,170 L510,280" class="cond"/>
+  <text x="518" y="230" class="label">unsafe</text>
+  <path d="M250,356 L250,384 L150,384 L150,410" class="cond"/>
+  <text x="160" y="376" class="label">tool calls</text>
+  <path d="M80,412 L80,319 L208,319" class="edge"/>
+  <text x="88" y="300" class="label">results</text>
+  <path d="M310,356 L310,566" class="cond"/>
+  <text x="318" y="470" class="label">final answer</text>
+  <path d="M510,356 L510,588 L372,588" class="edge"/>
+</svg>

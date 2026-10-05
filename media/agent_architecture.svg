@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .web { fill: #eef2ff; stroke: #818cf8; }
+      .svc { fill: #ecfeff; stroke: #22d3ee; }
+      .agt { fill: #f0fdf4; stroke: #4ade80; }
+      .tool { fill: #fff7ed; stroke: #fb923c; }
+      .store { fill: #fdf4ff; stroke: #c084fc; }
+      .ext { fill: #f8fafc; stroke: #94a3b8; stroke-dasharray: 5 4; }
+      .pill { fill: #ffffff; stroke-width: 1.2; }
+      .title { font-size: 17px; font-weight: 700; fill: #0f172a; }
+      .sub { font-size: 12.5px; fill: #475569; }
+      .item { font-size: 13px; fill: #1e293b; }
+      .label { font-size: 11.5px; fill: #475569; }
+      .edge { stroke: #64748b; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .edge-dash { stroke: #94a3b8; stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; marker-end: url(#arrow); }
+      .heading { font-size: 26px; font-weight: 800; fill: #0f172a; }
+      .caption { font-size: 14px; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="760" fill="#ffffff"/>
+  <text x="40" y="44" class="heading">🧠 AI Agent Toolkit — architecture</text>
+  <text x="40" y="70" class="caption">Browser → web UI proxy → agent service → LangGraph agents → tools, documents and memory</text>
+
+  <!-- Clients -->
+  <rect x="40" y="150" width="180" height="76" rx="14" class="box"/>
+  <text x="130" y="184" text-anchor="middle" class="title">Browser</text>
+  <text x="130" y="206" text-anchor="middle" class="sub">anonymous user id</text>
+
+  <rect x="40" y="380" width="180" height="96" rx="14" class="box ext"/>
+  <text x="130" y="414" text-anchor="middle" class="title">Other clients</text>
+  <text x="130" y="436" text-anchor="middle" class="sub">Python AgentClient</text>
+  <text x="130" y="455" text-anchor="middle" class="sub">Streamlit app · AG-UI</text>
+
+  <!-- Web UI -->
+  <rect x="270" y="110" width="250" height="196" rx="16" class="box web"/>
+  <text x="395" y="142" text-anchor="middle" class="title">Next.js web UI</text>
+  <text x="290" y="172" class="item">• Chat, history, Library</text>
+  <text x="290" y="194" class="item">• + menu: attach, connectors</text>
+  <text x="290" y="216" class="item">• Connect GitHub (OAuth)</text>
+  <rect x="290" y="232" width="210" height="58" rx="10" class="pill" stroke="#818cf8"/>
+  <text x="395" y="254" text-anchor="middle" class="item" font-weight="600">/api/agent proxy</text>
+  <text x="395" y="275" text-anchor="middle" class="label">adds service token + user id</text>
+
+  <rect x="270" y="520" width="250" height="96" rx="14" class="box ext"/>
+  <text x="395" y="552" text-anchor="middle" class="title">GitHub OAuth</text>
+  <text x="395" y="575" text-anchor="middle" class="sub">token in an encrypted,</text>
+  <text x="395" y="594" text-anchor="middle" class="sub">httpOnly browser cookie</text>
+
+  <!-- Service -->
+  <rect x="590" y="110" width="250" height="236" rx="16" class="box svc"/>
+  <text x="715" y="142" text-anchor="middle" class="title">FastAPI agent service</text>
+  <text x="610" y="174" class="item">/{agent}/stream · /invoke</text>
+  <text x="610" y="198" class="item">/{agent}/history · /threads</text>
+  <text x="610" y="222" class="item">/rag/documents (Library)</text>
+  <text x="610" y="246" class="item">/rag/attachments (per chat)</text>
+  <text x="610" y="270" class="item">/agui · /info · /feedback</text>
+  <text x="610" y="304" class="label">GitHub token → run context</text>
+  <text x="610" y="322" class="label">(never saved with the chat)</text>
+
+  <!-- Agents -->
+  <rect x="910" y="90" width="230" height="276" rx="16" class="box agt"/>
+  <text x="1025" y="122" text-anchor="middle" class="title">LangGraph agents</text>
+  <rect x="928" y="138" width="194" height="58" rx="10" class="pill" stroke="#22c55e" stroke-width="2"/>
+  <text x="1025" y="162" text-anchor="middle" class="item" font-weight="700">Research Assistant</text>
+  <text x="1025" y="182" text-anchor="middle" class="label">default · all tools</text>
+  <rect x="928" y="206" width="194" height="40" rx="10" class="pill" stroke="#4ade80"/>
+  <text x="1025" y="231" text-anchor="middle" class="item">RAG Assistant</text>
+  <rect x="928" y="256" width="194" height="40" rx="10" class="pill" stroke="#4ade80"/>
+  <text x="1025" y="281" text-anchor="middle" class="item">Chatbot</text>
+  <text x="1025" y="326" text-anchor="middle" class="label">+ demo agents via the API</text>
+  <text x="1025" y="346" text-anchor="middle" class="label">(supervisor, interrupt, …)</text>
+
+  <!-- Tools -->
+  <rect x="1190" y="90" width="180" height="276" rx="16" class="box tool"/>
+  <text x="1280" y="122" text-anchor="middle" class="title">Tools</text>
+  <text x="1208" y="156" class="item">📄 DocumentSearch</text>
+  <text x="1208" y="186" class="item">🌐 WebSearch</text>
+  <text x="1208" y="216" class="item">🧮 Calculator</text>
+  <text x="1208" y="246" class="item">⛅ Weather</text>
+  <text x="1208" y="276" class="item">🐙 GitHub MCP</text>
+  <text x="1208" y="300" class="label">repos · issues · PRs</text>
+  <text x="1208" y="318" class="label">read-only unless</text>
+  <text x="1208" y="336" class="label">"Allow changes"</text>
+
+  <!-- Storage -->
+  <rect x="590" y="520" width="250" height="96" rx="14" class="box store"/>
+  <text x="715" y="552" text-anchor="middle" class="title">Chat history</text>
+  <text x="715" y="575" text-anchor="middle" class="sub">LangGraph checkpoints</text>
+  <text x="715" y="594" text-anchor="middle" class="sub">SQLite · Postgres · MongoDB</text>
+
+  <rect x="910" y="500" width="230" height="136" rx="14" class="box store"/>
+  <text x="1025" y="532" text-anchor="middle" class="title">ChromaDB</text>
+  <text x="1025" y="558" text-anchor="middle" class="item">rag_documents</text>
+  <text x="1025" y="576" text-anchor="middle" class="label">Library · every chat</text>
+  <text x="1025" y="602" text-anchor="middle" class="item">chat_attachments</text>
+  <text x="1025" y="620" text-anchor="middle" class="label">one chat · one user</text>
+
+  <!-- External -->
+  <rect x="1190" y="420" width="180" height="76" rx="14" class="box ext"/>
+  <text x="1280" y="451" text-anchor="middle" class="title">LLM providers</text>
+  <text x="1280" y="474" text-anchor="middle" class="sub">DeepSeek · OpenAI · …</text>
+
+  <rect x="1190" y="530" width="180" height="106" rx="14" class="box ext"/>
+  <text x="1280" y="561" text-anchor="middle" class="title">External APIs</text>
+  <text x="1280" y="584" text-anchor="middle" class="sub">Embeddings</text>
+  <text x="1280" y="603" text-anchor="middle" class="sub">DuckDuckGo · OpenWeather</text>
+  <text x="1280" y="622" text-anchor="middle" class="sub">GitHub</text>
+
+  <!-- Edges -->
+  <path d="M220,188 L268,188" class="edge"/>
+  <path d="M520,261 L588,261" class="edge"/>
+  <text x="554" y="248" text-anchor="middle" class="label">HTTP</text>
+  <path d="M220,428 L560,428 L560,320 L588,320" class="edge-dash"/>
+  <path d="M395,306 L395,518" class="edge-dash"/>
+  <text x="403" y="352" class="label">connect /</text>
+  <text x="403" y="368" class="label">refresh token</text>
+  <path d="M840,200 L908,200" class="edge"/>
+  <path d="M1140,200 L1188,200" class="edge"/>
+  <path d="M715,346 L715,518" class="edge"/>
+  <text x="723" y="440" class="label">save / load</text>
+  <path d="M800,346 L800,470 L1000,470 L1000,498" class="edge"/>
+  <text x="850" y="462" class="label">upload &amp; index</text>
+  <path d="M1208,160 L1160,160 L1160,470 L1080,470 L1080,498" class="edge"/>
+  <text x="1166" y="395" class="label">search</text>
+  <path d="M1110,366 L1110,440 L1188,440" class="edge"/>
+  <text x="1104" y="410" text-anchor="end" class="label">prompts</text>
+  <path d="M1370,300 L1385,300 L1385,583 L1372,583" class="edge"/>
+
+  <text x="40" y="726" class="caption">Solid arrows: main request path · dashed: optional or external · GitHub calls carry each user's own token</text>
+</svg>

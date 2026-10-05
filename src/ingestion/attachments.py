@@ -70,21 +70,6 @@ def add_attachment(
     return len(chunks)
 
 
-def list_attachments(
-    store: Chroma, thread_id: str, user_id: str
-) -> list[tuple[str, str, int, str]]:
-    """(name, file_type, chunk_count, ingested_at) for each file attached to the chat."""
-    metadatas = store.get(where=_scope(thread_id, user_id), include=["metadatas"])["metadatas"]
-    files: dict[str, tuple[str, str, int, str]] = {}
-    for meta in metadatas:
-        name = str(meta["source"])
-        _, file_type, count, ingested_at = files.get(
-            name, (name, str(meta["file_type"]), 0, str(meta["ingested_at"]))
-        )
-        files[name] = (name, file_type, count + 1, ingested_at)
-    return sorted(files.values())
-
-
 def delete_attachment(store: Chroma, thread_id: str, user_id: str, name: str) -> bool:
     existing = store.get(where=_scope(thread_id, user_id, name), include=[])["ids"]
     if existing:

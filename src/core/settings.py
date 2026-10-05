@@ -140,6 +140,9 @@ class Settings(BaseSettings):
         DatabaseType.SQLITE
     )  # Options: DatabaseType.SQLITE or DatabaseType.POSTGRES
     SQLITE_DB_PATH: str = "checkpoints.db"
+    # The app's own tables (chats, attachments, library index). Defaults to sqlite:///app.db, or to
+    # the POSTGRES_* database when DATABASE_TYPE is postgres. MongoDB isn't supported by SQLAlchemy.
+    APP_DATABASE_URL: str | None = None
 
     # PostgreSQL Configuration
     POSTGRES_USER: str | None = None

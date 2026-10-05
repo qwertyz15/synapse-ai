@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime
 from typing import Any, Literal
 
@@ -21,7 +20,8 @@ from agents.safeguard import Safeguard, SafeguardOutput, SafetyAssessment
 from agents.tools import calculator, database_search
 from agents.utils import handle_tool_error
 from core import get_model, settings
-from ingestion.attachments import list_attachments, open_attachment_store
+from db.chats import list_attachments as list_chat_attachments
+from db.engine import async_session_scope
 from ingestion.manifest import list_indexed_documents
 
 logger = logging.getLogger(__name__)
@@ -69,15 +69,18 @@ def describe_documents() -> str:
     return f"The user has uploaded these documents, searchable with DocumentSearch: {listed}."
 
 
-def describe_attachments(thread_id: str | None, user_id: str | None) -> str:
-    if not thread_id or not user_id or not os.path.isdir(settings.CHROMA_DB_PATH):
-        return ""
+async def attachment_names(thread_id: str | None, user_id: str | None) -> list[str]:
+    if not thread_id or not user_id:
+        return []
     try:
-        store = open_attachment_store(settings.CHROMA_DB_PATH)
-        names = [row[0] for row in list_attachments(store, thread_id, user_id)]
+        async with async_session_scope() as session:
+            return [a.name for a in await list_chat_attachments(session, thread_id, user_id)]
     except Exception:
         logger.exception("Could not read this chat's attachments")
-        return ""
+        return []
+
+
+def describe_attachments(names: list[str]) -> str:
     if not names:
         return ""
     return (
@@ -107,7 +110,7 @@ def describe_github(context: AgentContext | None) -> str:
 
 
 def build_instructions(
-    context: AgentContext | None = None, thread_id: str | None = None, user_id: str | None = None
+    context: AgentContext | None = None, attachments: list[str] | None = None
 ) -> str:
     # Built per call so the date and document list stay current in a long-running service.
     current_date = datetime.now().strftime("%B %d, %Y")
@@ -117,7 +120,7 @@ def build_instructions(
     Today's date is {current_date}.
 
     {describe_documents()}
-    {describe_attachments(thread_id, user_id)}
+    {describe_attachments(attachments or [])}
     {describe_github(context)}
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
@@ -148,13 +151,10 @@ def run_tools(context: AgentContext | None) -> list[BaseTool]:
 def wrap_model(
     model: BaseChatModel,
     context: AgentContext | None = None,
-    configurable: dict[str, Any] | None = None,
+    attachments: list[str] | None = None,
 ) -> RunnableSerializable[AgentState, AIMessage]:
     bound_model = model.bind_tools(run_tools(context))
-    configurable = configurable or {}
-    instructions = build_instructions(
-        context, configurable.get("thread_id"), configurable.get("user_id")
-    )
+    instructions = build_instructions(context, attachments)
     preprocessor = RunnableLambda(
         lambda state: [SystemMessage(content=instructions)] + state["messages"],
         name="StateModifier",
@@ -172,7 +172,9 @@ def format_safety_message(safety: SafeguardOutput) -> AIMessage:
 async def acall_model(state: AgentState, runtime: Runtime[AgentContext]) -> AgentState:
     config = get_config()
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-    model_runnable = wrap_model(m, runtime.context, config["configurable"])
+    configurable = config["configurable"]
+    names = await attachment_names(configurable.get("thread_id"), configurable.get("user_id"))
+    model_runnable = wrap_model(m, runtime.context, names)
     response = await model_runnable.ainvoke(state, config)
 
     if state["remaining_steps"] < 2 and response.tool_calls:

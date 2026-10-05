@@ -138,7 +138,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refreshThreads = useCallback(() => {
     if (!info) return;
-    getAllThreads(info.agents.map((a) => a.key)).then(setThreads);
+    getAllThreads(info.agents.map((a) => a.key))
+      .then(setThreads)
+      .catch(() => setThreads([]));
   }, [info]);
 
   useEffect(() => {

@@ -13,6 +13,7 @@ const ROUTES: { method: string; pattern: RegExp; userId?: "body" | "query" }[] =
   { method: "POST", pattern: new RegExp(`^${AGENT}/stream$`), userId: "body" },
   { method: "POST", pattern: new RegExp(`^${AGENT}/history$`) },
   { method: "GET", pattern: new RegExp(`^${AGENT}/threads$`), userId: "query" },
+  { method: "GET", pattern: /^chats$/, userId: "query" },
   { method: "DELETE", pattern: new RegExp(`^${AGENT}/threads/[^/]+$`), userId: "query" },
   { method: "POST", pattern: /^feedback$/ },
   { method: "GET", pattern: /^rag\/documents$/ },

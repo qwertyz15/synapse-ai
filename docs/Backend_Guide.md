@@ -8,7 +8,8 @@ When you send a message in the web UI:
 
 1. The web UI's proxy calls `POST /research-assistant/stream` on the service, adding the service
    token, your anonymous `user_id` and (only if the GitHub connector is on) your GitHub token.
-2. `service/service.py` builds the run: the chat's `thread_id` and `user_id` go into the LangGraph
+2. `service/service.py` records the chat in the app database (or refuses it if the thread belongs
+   to someone else), then builds the run: the chat's `thread_id` and `user_id` go into the LangGraph
    config, and the GitHub token goes into a separate run context that is never saved.
 3. The agent graph (`agents/research_assistant.py`) loads the chat's history from the checkpointer
    (`memory/`), adds its instructions, and calls the model (`core/llm.py`).
@@ -31,9 +32,9 @@ When you send a message in the web UI:
 
 | File | What it does |
 |---|---|
-| `service.py` | The FastAPI app. On startup (`lifespan`) it opens the checkpointer and store and loads every agent. Endpoints: `/{agent}/invoke` (one reply), `/{agent}/stream` (SSE streaming), `/{agent}/history`, `/{agent}/threads` (list chats), `DELETE /{agent}/threads/{id}` (delete a chat and its files), `/info` (agents and models), `/feedback` (LangSmith). `verify_bearer` enforces `AUTH_SECRET`; `github_access` reads the `X-GitHub-*` headers; `_run_context` turns them into the agent's run context; `_handle_input` builds the LangGraph config and resumes interrupted runs. |
+| `service.py` | The FastAPI app. On startup (`lifespan`) it opens the checkpointer and store and loads every agent. Endpoints: `/{agent}/invoke` (one reply), `/{agent}/stream` (SSE streaming), `/{agent}/history`, `/{agent}/threads` and `/chats` (list chats, from the app database), `DELETE /{agent}/threads/{id}` (delete a chat and its files), `/info` (agents and models), `/feedback` (LangSmith). `verify_bearer` enforces `AUTH_SECRET`; `github_access` reads the `X-GitHub-*` headers; `_run_context` turns them into the agent's run context; `_handle_input` builds the LangGraph config and resumes interrupted runs. |
 | `rag.py` | Document endpoints. `/rag/documents` uploads, lists and deletes **library** files (saved to `data/` and indexed). `/rag/attachments` attaches, lists and removes files for **one chat**. Uploads are validated (type, 25 MB limit, safe names) and indexing runs behind one lock. |
-| `threads.py` | Lists a user's chats by reading checkpoint metadata, with titles from each chat's first message. `thread_owner` tells which user and agent a chat belongs to (used before deleting). |
+| `threads.py` | `thread_owner`: which user and agent a thread belongs to according to the checkpointer, for chats the app database doesn't know yet. |
 | `agui.py` | Serves the agents over the AG-UI protocol at `/agui/{agent}/run`, for AG-UI frontends such as CopilotKit. |
 | `utils.py` | Converts LangChain messages to the API's `ChatMessage` format (including the attachment names on your messages), reads messages out of checkpoints, and checks a requested model is available. |
 
@@ -68,9 +69,19 @@ When you send a message in the web UI:
 | `chunking.py` | Splits text into ~2,000-character chunks with 500 overlap and attaches metadata (file, page, hash). |
 | `index.py` | Opens ChromaDB. `chroma_client` shares one client per database folder; parallel searches crashed without it. |
 | `attachments.py` | Chat attachments in their own `chat_attachments` collection, tagged with `thread_id` and `user_id`: add, list, delete, delete-all-for-a-chat and scoped search. |
-| `manifest.py` | A small SQLite file next to ChromaDB recording which library files are indexed (hash, chunk count, time). |
+| `manifest.py` | Which library files are indexed (hash, chunk count, time), in the `library_documents` table. Imports the older `chroma_db/ingestion_manifest.sqlite` once if present. |
 | `changes.py` | Compares files with the manifest to find new, updated, unchanged and deleted ones. |
 | `models.py` | Small dataclasses used across the pipeline (source document, parsed page, change set, report). |
+
+## `db/` — the app database (SQLAlchemy)
+
+| File | What it does |
+|---|---|
+| `engine.py` | Picks the database (`APP_DATABASE_URL`, else `sqlite:///app.db`, or Postgres when `DATABASE_TYPE=postgres`), creates the async engine for the service and a sync one for ingestion, and applies Alembic migrations on first use. |
+| `models.py` | The tables: `chats` (owner, agent, title, created/updated), `chat_attachments`, `library_documents` and `app_meta`. |
+| `chats.py` | Queries used by the service: claim a chat on each message (creates it, bumps `updated_at`, refuses other users), list chats per agent or across agents, attachment rows, delete. |
+| `backfill.py` | One-time imports at startup: chats from existing checkpoints and attachments from Chroma, so data from before the app database isn't lost. |
+| `migrations/` | Alembic migrations. Create new ones with `uv run alembic revision --autogenerate -m "..."` after changing `models.py`. |
 
 ## `memory/` — where chats are saved
 
@@ -112,7 +123,8 @@ When you send a message in the web UI:
 | Library files | `data/` | `service/rag.py` uploads, or you |
 | Library chunks and embeddings | `chroma_db/`, collection `rag_documents` | `ingestion/pipeline.py` |
 | Chat attachment chunks | `chroma_db/`, collection `chat_attachments` | `ingestion/attachments.py` |
-| Which library files are indexed | `chroma_db/ingestion_manifest.sqlite` | `ingestion/manifest.py` |
+| Chat list (owner, title, times) and attachment rows | `app.db` (or Postgres), tables `chats`, `chat_attachments` | `db/chats.py` |
+| Which library files are indexed | `app.db` (or Postgres), table `library_documents` | `ingestion/manifest.py` |
 | GitHub tokens | nowhere on the server; an encrypted cookie in the browser | the web UI |
 
 ## Where to change common things
@@ -126,3 +138,4 @@ When you send a message in the web UI:
 | Support a new file type | `ingestion/loader.py` (extensions) and `ingestion/parsers.py` |
 | Add a model or provider | `schema/models.py` and `core/llm.py` |
 | Add an API endpoint | `service/service.py`, or `service/rag.py` for document endpoints |
+| Add or change an app table | `db/models.py`, then `uv run alembic revision --autogenerate -m "..."` |

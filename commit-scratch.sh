@@ -46,7 +46,7 @@ group_for() {
             echo 3 ;;
 
         src/service/threads.py | src/memory/* | tests/service/test_threads.py | tests/service/test_threads_sqlite.py | \
-            tests/smoke/*)
+            tests/smoke/* | src/db/* | alembic.ini | tests/service/test_app_database.py)
             echo 5 ;;
         src/service/rag.py | tests/service/test_rag_documents.py) echo 10 ;;
         src/service/agui.py | tests/service/test_agui.py | docs/AGUI.md | scripts/agui-client/*) echo 20 ;;
@@ -116,10 +116,11 @@ Registry and lazy-loading base for agents, plus a minimal chatbot."
 
 Invoke and SSE streaming endpoints, history, feedback, bearer auth and the
 service entry point."
-    "feat: conversation memory and thread listing
+    "feat: conversation memory and the app database
 
-SQLite, Postgres and MongoDB checkpointers and per-user thread listing
-derived from checkpoint metadata."
+SQLite, Postgres and MongoDB checkpointers for conversations, and a SQLAlchemy
+app database with Alembic migrations for chats, attachments and the library
+index, filled from existing checkpoints on first start."
     "feat: Python client, Streamlit app and voice
 
 AgentClient for the service API, the Streamlit chat app, and optional

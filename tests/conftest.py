@@ -27,3 +27,12 @@ def mock_env():
     """Fixture to ensure environment is clean for each test."""
     with patch.dict(os.environ, {}, clear=True):
         yield
+
+
+@pytest.fixture(autouse=True)
+def app_database(tmp_path):
+    """Give every test its own empty app database instead of the developer's app.db."""
+    from core.settings import settings
+
+    with patch.object(settings, "APP_DATABASE_URL", f"sqlite:///{tmp_path / 'app.db'}"):
+        yield

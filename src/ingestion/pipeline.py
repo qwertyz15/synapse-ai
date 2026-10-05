@@ -8,9 +8,15 @@ from core.embeddings import embedding_signature, get_embeddings
 from ingestion.changes import detect_changes
 from ingestion.chunking import chunk_document
 from ingestion.cleaning import clean_pages
-from ingestion.index import delete_document, open_vectorstore, replace_document_chunks
+from ingestion.index import (
+    COLLECTION_NAME,
+    chroma_client,
+    delete_document,
+    open_vectorstore,
+    replace_document_chunks,
+)
 from ingestion.loader import LocalFolderConnector
-from ingestion.manifest import MANIFEST_FILENAME, Manifest
+from ingestion.manifest import Manifest
 from ingestion.models import IngestionReport
 from ingestion.parsers import parse
 
@@ -41,18 +47,22 @@ def run_ingestion(
     documents = list(LocalFolderConnector(source_dir).iter_documents())
     report = IngestionReport(dry_run=dry_run)
 
-    # A dry run must not create the database directory or manifest.
-    manifest_exists = (Path(db_path) / MANIFEST_FILENAME).exists()
-    manifest = Manifest(db_path) if manifest_exists or not dry_run else None
+    manifest = Manifest(db_path)
     try:
-        stored_signature = manifest.get_meta(SIGNATURE_KEY) if manifest else None
-        report.full_rebuild = full_rebuild or stored_signature != signature
-        indexed = {} if report.full_rebuild or manifest is None else manifest.hashes()
+        indexed = manifest.hashes()
+        report.full_rebuild = (
+            full_rebuild
+            or manifest.get_meta(SIGNATURE_KEY) != signature
+            # The index says files are embedded but the vectors are gone (chroma_db was deleted).
+            or (bool(indexed) and _library_collection_empty(db_path))
+        )
+        if report.full_rebuild:
+            indexed = {}
         changes = detect_changes(documents, indexed)
         report.unchanged = [doc.doc_id for doc in changes.unchanged]
         report.deleted = changes.deleted
 
-        if dry_run or manifest is None:
+        if dry_run:
             report.new = [doc.doc_id for doc in changes.new]
             report.updated = [doc.doc_id for doc in changes.updated]
             return report
@@ -83,5 +93,13 @@ def run_ingestion(
             report.chunks_written += len(chunks)
         return report
     finally:
-        if manifest:
-            manifest.close()
+        manifest.close()
+
+
+def _library_collection_empty(db_path: str | Path) -> bool:
+    if not Path(db_path).is_dir():
+        return True
+    client = chroma_client(db_path)
+    if COLLECTION_NAME not in {c.name for c in client.list_collections()}:
+        return True
+    return client.get_collection(COLLECTION_NAME).count() == 0

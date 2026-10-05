@@ -1,8 +1,9 @@
-"""Integration tests for /threads against a real SQLite checkpointer.
+"""Integration tests for /threads and /chats against a real SQLite checkpointer.
 
-The unit tests in test_service.py drive a fake checkpointer, so they can't catch a
-metadata filter that the database rejects or a head-checkpoint assumption that LangGraph
-doesn't actually hold. These run real graphs through a real checkpointer instead.
+Threads are written straight to the checkpointer, the way chats created before the chats
+table existed are stored, then imported by the startup backfill. That exercises the real
+metadata filters and head-checkpoint layout LangGraph produces, plus the endpoints that now
+read the chats table.
 """
 
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.func import entrypoint
 from langgraph.graph import END, MessagesState, StateGraph
 
+from db.backfill import backfill_chats
 from service import app
 
 
@@ -88,6 +90,7 @@ async def seeded(tmp_path):
         }
         for (agent_id, user_id, thread_id), messages in threads.items():
             await run_turns(agents[agent_id], thread_id, user_id, agent_id, messages)
+        await backfill_chats(checkpointer)
 
         transport = httpx.ASGITransport(app=app)
         lookup = {"side_effect": lambda agent_id: agents[agent_id]}
@@ -140,9 +143,8 @@ async def test_threads_titles_functional_api_agent(seeded) -> None:
 async def test_threads_lists_subgraph_threads_once(seeded) -> None:
     """Subgraph runs write their own head checkpoint under a nested namespace.
 
-    Those inherit the parent run's user_id/agent_id metadata, so they match the same
-    query and would otherwise be listed as extra copies of the thread, each costing
-    its own tip lookup.
+    Those inherit the parent run's user_id/agent_id metadata, so the backfill must import
+    each thread once. Listing then reads the chats table and never touches the checkpointer.
     """
     tip_lookups: list[str] = []
     original = AsyncSqliteSaver.aget_tuple
@@ -158,7 +160,7 @@ async def test_threads_lists_subgraph_threads_once(seeded) -> None:
     threads = response.json()["threads"]
     assert [t["thread_id"] for t in threads] == ["s-alice-multi", "s-alice-single"]
     assert [t["title"] for t in threads] == ["sub first turn", "sub only turn"]
-    assert sorted(tip_lookups) == ["s-alice-multi", "s-alice-single"]
+    assert tip_lookups == []
 
 
 @pytest.mark.asyncio
@@ -223,3 +225,23 @@ async def test_history_returns_full_conversation(seeded) -> None:
         messages = response.json()["messages"]
         assert [m["type"] for m in messages] == ["human", "ai"] * turns
         assert messages[0]["content"] == first
+
+
+@pytest.mark.asyncio
+async def test_chats_lists_every_agent_for_a_user(seeded) -> None:
+    response = await seeded.get("/chats", params={"user_id": "alice", "limit": 100})
+    assert response.status_code == 200
+    by_agent: dict[str, list[str]] = {}
+    for t in response.json()["threads"]:
+        by_agent.setdefault(t["agent_id"], []).append(t["thread_id"])
+    assert sorted(by_agent) == ["functional-agent", "graph-agent", "subgraph-agent"]
+    assert sum(len(v) for v in by_agent.values()) == 6
+
+
+@pytest.mark.asyncio
+async def test_continuing_someone_elses_thread_is_refused(seeded) -> None:
+    response = await seeded.post(
+        "/graph-agent/invoke",
+        json={"message": "hi", "thread_id": "g-bob-single", "user_id": "alice"},
+    )
+    assert response.status_code == 404

@@ -32,6 +32,9 @@ from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, loa
 from agents.github_mcp_agent.github_mcp_agent import github_mcp_agent
 from agents.github_tools import AgentContext, github_tools
 from core import settings
+from db.backfill import run_backfills
+from db.chats import ChatAccessError, claim_chat, delete_chat, get_chat, list_chats
+from db.engine import async_session_scope
 from memory import initialize_database, initialize_store
 from schema import (
     ChatHistory,
@@ -42,6 +45,7 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     ThreadDeleted,
+    ThreadSummary,
     UserInput,
     UserThreads,
     UserThreadsInput,
@@ -49,7 +53,7 @@ from schema import (
 from service.agui import router as agui_router
 from service.rag import remove_thread_attachments
 from service.rag import router as rag_router
-from service.threads import list_user_threads, thread_owner
+from service.threads import thread_owner
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
@@ -117,6 +121,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 agent.checkpointer = saver
                 # Set store for long-term memory (cross-conversation knowledge)
                 agent.store = store
+            await run_backfills(saver)
             yield
     except Exception as e:
         logger.error(f"Error during database/store/agents initialization: {e}")
@@ -172,6 +177,19 @@ async def _run_context(agent_id: str, access: AgentContext | None) -> AgentConte
     elif access.github_token:
         await github_tools.ensure(access.github_token, access.github_write)
     return access
+
+
+async def _claim_thread(user_input: UserInput, agent_id: str) -> None:
+    """Record the chat and fill in missing ids; someone else's thread is reported as not found."""
+    user_input.thread_id = user_input.thread_id or str(uuid4())
+    try:
+        async with async_session_scope() as session:
+            chat = await claim_chat(
+                session, user_input.thread_id, user_input.user_id, agent_id, user_input.message
+            )
+        user_input.user_id = chat.user_id
+    except ChatAccessError:
+        raise HTTPException(status_code=404, detail="Thread not found")
 
 
 async def _handle_input(
@@ -257,6 +275,7 @@ async def invoke(
     # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
+    await _claim_thread(user_input, agent_id)
     context = await _run_context(agent_id, github)
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent, agent_id, context)
@@ -439,6 +458,7 @@ async def stream(
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
+    await _claim_thread(user_input, agent_id)
     return StreamingResponse(
         message_generator(user_input, agent_id, github),
         media_type="text/event-stream",
@@ -508,18 +528,26 @@ async def threads(
     trust model as /history. Put your own authorization in front of this before end
     users can reach it.
     """
-    agent: AgentGraph = get_agent(agent_id)
-    checkpointer = getattr(agent, "checkpointer", None)
-    if not checkpointer:
-        return UserThreads(threads=[])
+    return await _list_threads(input, agent_id)
 
-    try:
-        summaries = await list_user_threads(checkpointer, input.user_id, agent_id, input.limit)
-    except Exception as e:
-        logger.error(f"An exception occurred: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error")
 
-    return UserThreads(threads=summaries)
+@router.get("/chats")
+async def all_chats(input: UserThreadsInput = Depends()) -> UserThreads:
+    """List a user's conversations across every agent, most recently updated first."""
+    return await _list_threads(input, None)
+
+
+async def _list_threads(input: UserThreadsInput, agent_id: str | None) -> UserThreads:
+    async with async_session_scope() as session:
+        chats = await list_chats(session, input.user_id, agent_id, input.limit)
+    return UserThreads(
+        threads=[
+            ThreadSummary(
+                thread_id=c.thread_id, agent_id=c.agent_id, updated_at=c.updated_at, title=c.title
+            )
+            for c in chats
+        ]
+    )
 
 
 @router.delete("/{agent_id}/threads/{thread_id}", operation_id="delete_thread_with_agent_id")
@@ -534,13 +562,21 @@ async def delete_thread(
     """
     agent: AgentGraph = get_agent(agent_id)
     checkpointer = getattr(agent, "checkpointer", None)
-    owner = await thread_owner(checkpointer, thread_id) if checkpointer else None
+    async with async_session_scope() as session:
+        chat = await get_chat(session, thread_id)
+    if chat is not None:
+        owner: tuple[str | None, str | None] | None = (chat.user_id, chat.agent_id)
+    else:
+        # Threads from before the chats table that the startup import hasn't recorded.
+        owner = await thread_owner(checkpointer, thread_id) if checkpointer else None
     if owner is not None and owner != (user_id, agent_id):
         raise HTTPException(status_code=404, detail="Thread not found")
 
     if owner is not None and checkpointer is not None:
         await checkpointer.adelete_thread(thread_id)
     removed = await remove_thread_attachments(thread_id, user_id)
+    async with async_session_scope() as session:
+        await delete_chat(session, thread_id)
     if owner is None and not removed:
         raise HTTPException(status_code=404, detail="Thread not found")
     return ThreadDeleted(thread_id=thread_id, attachments_removed=removed)

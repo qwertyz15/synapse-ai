@@ -2,11 +2,13 @@ import threading
 from pathlib import Path
 
 import chromadb
+from chromadb.api.shared_system_client import SharedSystemClient
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 COLLECTION_NAME = "rag_documents"
+CHROMA_FILE = "chroma.sqlite3"
 
 _clients: dict[str, chromadb.ClientAPI] = {}
 _clients_lock = threading.Lock()
@@ -17,6 +19,11 @@ def chroma_client(db_path: str | Path) -> chromadb.ClientAPI:
     # (parallel tool calls), failing with KeyError / "Could not connect to tenant".
     key = str(Path(db_path).resolve())
     with _clients_lock:
+        if key in _clients and not (Path(key) / CHROMA_FILE).exists():
+            # The folder was deleted while we ran; the cached client would keep using the gone
+            # database. Chroma can only drop its cache wholesale, so reconnect every path.
+            SharedSystemClient.clear_system_cache()
+            _clients.clear()
         if key not in _clients:
             _clients[key] = chromadb.PersistentClient(path=key)
         return _clients[key]

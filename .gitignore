@@ -199,3 +199,7 @@ smoke_live_app_failure.png
 
 # Claude Code agent worktrees (ephemeral, per-agent git checkouts)
 .claude/worktrees/
+
+# App database (chats, attachments, library index)
+app.db
+app.db-*

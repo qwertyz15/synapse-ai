@@ -58,11 +58,11 @@ export const deleteThread = (agent: string, threadId: string) =>
     method: "DELETE",
   });
 
-export async function getAllThreads(agents: string[]): Promise<ThreadInfo[]> {
-  const results = await Promise.allSettled(agents.map((a) => getThreads(a)));
-  return results
-    .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
+/** Every chat of this browser's user across agents, newest first; hidden agents are filtered out. */
+export async function getAllThreads(agents: string[], limit = 100): Promise<ThreadInfo[]> {
+  const visible = new Set(agents);
+  const { threads } = await request<{ threads: ThreadInfo[] }>(`chats?limit=${limit}`);
+  return threads.filter((t) => visible.has(t.agent_id));
 }
 
 export const sendFeedback = (runId: string, score: number) =>

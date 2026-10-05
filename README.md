@@ -76,6 +76,7 @@ likely to set:
 | `OPENWEATHERMAP_API_KEY` | The weather tool |
 | `GROQ_API_KEY` | Content moderation (LlamaGuard safeguard) |
 | `DATABASE_TYPE` | Chat storage: `sqlite` (default, `checkpoints.db`), `postgres` or `mongo` |
+| `APP_DATABASE_URL` | The app's own tables (chats, attachments, library index); defaults to `sqlite:///app.db`, or Postgres when `DATABASE_TYPE=postgres` |
 
 Provider-specific guides: [Ollama](docs/Ollama.md) ·
 [local GPUs with vLLM / SGLang](docs/Local_GPU_Deployment.md) · [Vertex AI](docs/VertexAI.md) ·
@@ -106,6 +107,9 @@ flowchart LR
   passages, never whole files.
 - **Conversation memory**: every message, tool call and tool result in a chat is saved and sent back
   to the model on each turn.
+- **App database**: SQLAlchemy models (`src/db/`) for chats (owner, title, times), chat attachments
+  and the library index, with Alembic migrations applied automatically at startup. Chats that existed
+  before are imported once on first start.
 
 ## Agents
 
@@ -130,6 +134,7 @@ and appears in the web UI's assistant menu.
 src/
   agents/        agents, tools and the shared GitHub MCP tools
   service/       FastAPI service: chat, history, threads, library, attachments, AG-UI
+  db/            SQLAlchemy models, Alembic migrations and queries for the app database
   ingestion/     document parsing, chunking and ChromaDB indexing
   memory/        SQLite / Postgres / MongoDB checkpointers
   core/          settings, model setup, embeddings
@@ -162,7 +167,7 @@ The service's OpenAPI docs are at <http://localhost:8080/redoc>. Main endpoints:
 | Endpoint | Purpose |
 |---|---|
 | `POST /{agent}/stream`, `POST /{agent}/invoke` | Chat (streaming or a single reply) |
-| `POST /{agent}/history`, `GET /{agent}/threads`, `DELETE /{agent}/threads/{thread_id}` | Chat history, list and delete |
+| `POST /{agent}/history`, `GET /{agent}/threads`, `GET /chats`, `DELETE /{agent}/threads/{thread_id}` | Chat history, list (per agent or all) and delete |
 | `GET/POST/DELETE /rag/documents` | Library documents |
 | `GET/POST/DELETE /rag/attachments` | Files attached to one chat |
 | `GET /info` | Available agents and models |

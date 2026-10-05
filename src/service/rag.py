@@ -13,12 +13,13 @@ from starlette.concurrency import run_in_threadpool
 
 from core import settings
 from core.embeddings import get_embeddings
+from db import chats as chat_rows
+from db.engine import async_session_scope
 from ingestion import IngestionReport, run_ingestion
 from ingestion.attachments import (
     add_attachment,
     delete_attachment,
     delete_thread_attachments,
-    list_attachments,
     open_attachment_store,
 )
 from ingestion.loader import SUPPORTED_EXTENSIONS
@@ -138,20 +139,24 @@ async def delete_document(doc_id: str) -> IngestionResult:
     return _result(await _ingest())
 
 
-def _attachments(thread_id: str, user_id: str) -> list[ChatAttachment]:
-    if not Path(settings.CHROMA_DB_PATH).is_dir():
-        return []
-    store = open_attachment_store(settings.CHROMA_DB_PATH)
+async def _attachments(thread_id: str, user_id: str) -> list[ChatAttachment]:
+    async with async_session_scope() as session:
+        rows = await chat_rows.list_attachments(session, thread_id, user_id)
     return [
-        ChatAttachment(name=n, file_type=t, chunk_count=c, ingested_at=at)
-        for n, t, c, at in list_attachments(store, thread_id, user_id)
+        ChatAttachment(
+            name=r.name,
+            file_type=r.file_type,
+            chunk_count=r.chunk_count,
+            ingested_at=r.created_at.isoformat(),
+        )
+        for r in rows
     ]
 
 
 @router.get("/attachments")
-def list_chat_attachments(thread_id: str, user_id: str) -> ChatAttachments:
+async def list_chat_attachments(thread_id: str, user_id: str) -> ChatAttachments:
     """List the files attached to one chat."""
-    return ChatAttachments(attachments=_attachments(thread_id, user_id))
+    return ChatAttachments(attachments=await _attachments(thread_id, user_id))
 
 
 @router.post("/attachments")
@@ -172,7 +177,7 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
         async with _ingestion_lock:
             for name, content in accepted.items():
                 try:
-                    await run_in_threadpool(
+                    chunks = await run_in_threadpool(
                         add_attachment,
                         store,
                         thread_id=thread_id,
@@ -182,15 +187,25 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
                         chunk_size=settings.RAG_CHUNK_SIZE,
                         chunk_overlap=settings.RAG_CHUNK_OVERLAP,
                     )
-                    attached.append(name)
                 except Exception as e:
                     logger.exception("Failed to attach %s", name)
                     failed[name] = f"{type(e).__name__}: {e}"
+                    continue
+                async with async_session_scope() as session:
+                    await chat_rows.upsert_attachment(
+                        session,
+                        thread_id,
+                        user_id,
+                        name,
+                        Path(name).suffix.lstrip(".").lower(),
+                        chunks,
+                    )
+                attached.append(name)
     return AttachmentResult(
         attached=attached,
         failed=failed,
         rejected=rejected,
-        attachments=_attachments(thread_id, user_id),
+        attachments=await _attachments(thread_id, user_id),
     )
 
 
@@ -199,10 +214,12 @@ async def detach_from_chat(name: str, thread_id: str, user_id: str) -> ChatAttac
     """Remove a file attached to a chat."""
     store = open_attachment_store(settings.CHROMA_DB_PATH)
     async with _ingestion_lock:
-        removed = await run_in_threadpool(delete_attachment, store, thread_id, user_id, name)
-    if not removed:
+        removed_chunks = await run_in_threadpool(delete_attachment, store, thread_id, user_id, name)
+    async with async_session_scope() as session:
+        removed_row = await chat_rows.delete_attachment(session, thread_id, user_id, name)
+    if not removed_chunks and not removed_row:
         raise HTTPException(status_code=404, detail="Attachment not found")
-    return ChatAttachments(attachments=_attachments(thread_id, user_id))
+    return ChatAttachments(attachments=await _attachments(thread_id, user_id))
 
 
 async def remove_thread_attachments(thread_id: str, user_id: str) -> int:

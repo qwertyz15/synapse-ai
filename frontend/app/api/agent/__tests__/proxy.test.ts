@@ -95,3 +95,21 @@ it("scopes chat attachment requests to the browser's user id", async () => {
   expect(sent.searchParams.get("thread_id")).toBe("t1");
   expect(sent.searchParams.get("user_id")).toBe("browser-1");
 });
+
+it("lists every chat with one request scoped to the browser's user", async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL) => {
+      urls.push(String(input));
+      return Response.json({ threads: [] });
+    }),
+  );
+  const req = new NextRequest("http://localhost:3000/api/agent/chats?limit=100&user_id=spoofed");
+  req.cookies.set("uid", "browser-1");
+  const res = await GET(req, { params: Promise.resolve({ path: ["chats"] }) });
+  expect(res.status).toBe(200);
+  const sent = new URL(urls[0]);
+  expect(sent.pathname).toBe("/chats");
+  expect(sent.searchParams.get("user_id")).toBe("browser-1");
+});

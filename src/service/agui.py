@@ -24,6 +24,8 @@ from langfuse.langchain import CallbackHandler  # type: ignore[import-untyped]
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
 from core import settings
+from db.chats import ChatAccessError, claim_chat
+from db.engine import async_session_scope
 from service.utils import ensure_model_available
 
 logger = logging.getLogger(__name__)
@@ -71,6 +73,16 @@ def _base_config(input_data: RunAgentInput, agent_id: str) -> RunnableConfig:
     )
 
 
+def _last_user_text(input_data: RunAgentInput) -> str:
+    for message in reversed(input_data.messages):
+        if message.role == "user":
+            content = message.content
+            if isinstance(content, str):
+                return content
+            return " ".join(getattr(part, "text", "") or "" for part in content or [])
+    return ""
+
+
 async def _event_stream(
     agent_id: str,
     graph: AgentGraph,
@@ -109,6 +121,20 @@ async def agui_run(
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
 
     config = _base_config(input_data, agent_id)
+    forwarded = (input_data.forwarded_props or {}).get("configurable") or {}
+    try:
+        async with async_session_scope() as session:
+            chat = await claim_chat(
+                session,
+                input_data.thread_id,
+                forwarded.get("user_id"),
+                agent_id,
+                _last_user_text(input_data),
+            )
+    except ChatAccessError:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    config["configurable"]["user_id"] = chat.user_id
+    config["metadata"]["user_id"] = chat.user_id
     encoder = EventEncoder(accept=request.headers.get("accept", ""))
     return StreamingResponse(
         _event_stream(agent_id, graph, input_data, config, encoder),

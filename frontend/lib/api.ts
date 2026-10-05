@@ -1,5 +1,14 @@
 import { readEvents } from "./sse";
-import type { ChatMessage, IngestionResult, RagDocument, ServiceMetadata, StreamEvent, ThreadInfo } from "./types";
+import type {
+  AttachmentResult,
+  ChatAttachment,
+  ChatMessage,
+  IngestionResult,
+  RagDocument,
+  ServiceMetadata,
+  StreamEvent,
+  ThreadInfo,
+} from "./types";
 
 const BASE = "/api/agent";
 
@@ -44,6 +53,11 @@ export const getHistory = (agent: string, threadId: string) =>
 export const getThreads = (agent: string, limit = 30) =>
   request<{ threads: ThreadInfo[] }>(`${agent}/threads?limit=${limit}`).then((r) => r.threads);
 
+export const deleteThread = (agent: string, threadId: string) =>
+  request<{ thread_id: string; attachments_removed: number }>(`${agent}/threads/${encodeURIComponent(threadId)}`, {
+    method: "DELETE",
+  });
+
 export async function getAllThreads(agents: string[]): Promise<ThreadInfo[]> {
   const results = await Promise.allSettled(agents.map((a) => getThreads(a)));
   return results
@@ -67,9 +81,32 @@ export const deleteDocument = (docId: string) =>
     method: "DELETE",
   });
 
+const threadQuery = (threadId: string) => `thread_id=${encodeURIComponent(threadId)}`;
+
+export const listAttachments = (threadId: string) =>
+  request<{ attachments: ChatAttachment[] }>(`rag/attachments?${threadQuery(threadId)}`).then((r) => r.attachments);
+
+export function attachToChat(threadId: string, files: File[]) {
+  const form = new FormData();
+  for (const f of files) form.append("files", f);
+  return request<AttachmentResult>(`rag/attachments?${threadQuery(threadId)}`, { method: "POST", body: form });
+}
+
+export const detachFromChat = (threadId: string, name: string) =>
+  request<{ attachments: ChatAttachment[] }>(`rag/attachments/${encodeURIComponent(name)}?${threadQuery(threadId)}`, {
+    method: "DELETE",
+  }).then((r) => r.attachments);
+
 export async function* streamChat(
   agent: string,
-  body: { message: string; thread_id: string; model?: string },
+  body: {
+    message: string;
+    thread_id: string;
+    model?: string;
+    connectors?: string[];
+    github_write?: boolean;
+    attachments?: string[];
+  },
   signal: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
   const res = await fetch(`${BASE}/${agent}/stream`, {

@@ -66,6 +66,11 @@ class UserInput(BaseModel):
         default={},
         examples=[{"spicy_level": 0.8}],
     )
+    attachments: list[str] = Field(
+        description="Names of chat attachments sent with this message; shown on it in history.",
+        default=[],
+        examples=[["notes.pdf"]],
+    )
 
 
 class StreamInput(UserInput):
@@ -100,6 +105,34 @@ class RagDocument(BaseModel):
 
 class RagDocuments(BaseModel):
     documents: list[RagDocument]
+
+
+class ThreadDeleted(BaseModel):
+    thread_id: str
+    attachments_removed: int = Field(description="Files attached to the chat that were deleted.")
+
+
+class ChatAttachment(BaseModel):
+    """A file attached to one chat; only that conversation can search it."""
+
+    name: str = Field(examples=["notes.pdf"])
+    file_type: str = Field(examples=["pdf"])
+    chunk_count: int = Field(examples=[4])
+    ingested_at: str = Field(description="ISO 8601 timestamp of when it was attached.")
+
+
+class ChatAttachments(BaseModel):
+    attachments: list[ChatAttachment]
+
+
+class AttachmentResult(ChatAttachments):
+    """Outcome of attaching files, plus the chat's attachments afterwards."""
+
+    attached: list[str] = []
+    failed: dict[str, str] = Field(default={}, description="Filename -> error message.")
+    rejected: dict[str, str] = Field(
+        default={}, description="Uploaded filename -> reason it wasn't accepted."
+    )
 
 
 class IngestionResult(BaseModel):
@@ -154,6 +187,10 @@ class ChatMessage(BaseModel):
     custom_data: dict[str, Any] = Field(
         description="Custom message data.",
         default={},
+    )
+    attachments: list[str] = Field(
+        description="Chat attachments sent with a human message.",
+        default=[],
     )
 
     def pretty_repr(self) -> str:

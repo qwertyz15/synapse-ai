@@ -29,7 +29,8 @@ from langsmith import Client as LangsmithClient
 from langsmith import uuid7
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
-from agents.github_mcp_agent.github_mcp_agent import GitHubContext, github_mcp_agent
+from agents.github_mcp_agent.github_mcp_agent import github_mcp_agent
+from agents.github_tools import AgentContext, github_tools
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -40,13 +41,15 @@ from schema import (
     FeedbackResponse,
     ServiceMetadata,
     StreamInput,
+    ThreadDeleted,
     UserInput,
     UserThreads,
     UserThreadsInput,
 )
 from service.agui import router as agui_router
+from service.rag import remove_thread_attachments
 from service.rag import router as rag_router
-from service.threads import list_user_threads
+from service.threads import list_user_threads, thread_owner
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
@@ -140,15 +143,35 @@ async def info() -> ServiceMetadata:
 
 
 GITHUB_AGENT_ID = "github-mcp-agent"
-GitHubToken = Annotated[str | None, Header(alias="X-GitHub-Token")]
+CONTEXT_AGENT_IDS = {GITHUB_AGENT_ID, "research-assistant"}
+TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
-async def _run_context(agent_id: str, github_token: str | None) -> GitHubContext | None:
+def github_access(
+    x_github_token: Annotated[str | None, Header(alias="X-GitHub-Token")] = None,
+    x_github_login: Annotated[str | None, Header(alias="X-GitHub-Login")] = None,
+    x_github_write: Annotated[str | None, Header(alias="X-GitHub-Write")] = None,
+) -> AgentContext:
+    return AgentContext(
+        github_token=x_github_token or None,
+        github_login=x_github_login or None,
+        github_write=(x_github_write or "").strip().lower() in TRUE_VALUES,
+    )
+
+
+GitHubAccess = Annotated[AgentContext, Depends(github_access)]
+
+
+async def _run_context(agent_id: str, access: AgentContext | None) -> AgentContext | None:
     # The token travels as run context, never in config, so it isn't written to checkpoints.
-    if agent_id != GITHUB_AGENT_ID:
+    if agent_id not in CONTEXT_AGENT_IDS:
         return None
-    await github_mcp_agent.ensure_tools(github_token)
-    return GitHubContext(github_token=github_token)
+    access = access or AgentContext()
+    if agent_id == GITHUB_AGENT_ID:
+        await github_mcp_agent.ensure_tools(access.github_token)
+    elif access.github_token:
+        await github_tools.ensure(access.github_token, access.github_write)
+    return access
 
 
 async def _handle_input(
@@ -203,7 +226,8 @@ async def _handle_input(
         # assume user input is response to resume agent execution from interrupt
         input = Command(resume=user_input.message)
     else:
-        input = {"messages": [HumanMessage(content=user_input.message)]}
+        extra = {"attachments": user_input.attachments} if user_input.attachments else {}
+        input = {"messages": [HumanMessage(content=user_input.message, additional_kwargs=extra)]}
 
     kwargs: dict[str, Any] = {
         "input": input,
@@ -218,7 +242,7 @@ async def _handle_input(
 @router.post("/{agent_id}/invoke", operation_id="invoke_with_agent_id")
 @router.post("/invoke")
 async def invoke(
-    user_input: UserInput, agent_id: str = DEFAULT_AGENT, x_github_token: GitHubToken = None
+    user_input: UserInput, github: GitHubAccess, agent_id: str = DEFAULT_AGENT
 ) -> ChatMessage:
     """
     Invoke an agent with user input to retrieve a final response.
@@ -233,7 +257,7 @@ async def invoke(
     # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
-    context = await _run_context(agent_id, x_github_token)
+    context = await _run_context(agent_id, github)
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent, agent_id, context)
 
@@ -261,14 +285,14 @@ async def invoke(
 
 
 async def message_generator(
-    user_input: StreamInput, agent_id: str = DEFAULT_AGENT, github_token: str | None = None
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT, github: AgentContext | None = None
 ) -> AsyncGenerator[str, None]:
     """
     Generate a stream of messages from the agent.
 
     This is the workhorse method for the /stream endpoint.
     """
-    context = await _run_context(agent_id, github_token)
+    context = await _run_context(agent_id, github)
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent, agent_id, context)
 
@@ -403,7 +427,7 @@ def _sse_response_example() -> dict[int | str, Any]:
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(
-    user_input: StreamInput, agent_id: str = DEFAULT_AGENT, x_github_token: GitHubToken = None
+    user_input: StreamInput, github: GitHubAccess, agent_id: str = DEFAULT_AGENT
 ) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
@@ -416,7 +440,7 @@ async def stream(
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
     return StreamingResponse(
-        message_generator(user_input, agent_id, x_github_token),
+        message_generator(user_input, agent_id, github),
         media_type="text/event-stream",
     )
 
@@ -462,7 +486,8 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
                 messages = messages_from_checkpoint(tup.checkpoint)
         if not messages:
             state_snapshot = await agent.aget_state(config=config)
-            messages = state_snapshot.values["messages"]
+            # A thread that never existed (or was deleted) has no state values.
+            messages = state_snapshot.values.get("messages", [])
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
@@ -495,6 +520,30 @@ async def threads(
         raise HTTPException(status_code=500, detail="Unexpected error")
 
     return UserThreads(threads=summaries)
+
+
+@router.delete("/{agent_id}/threads/{thread_id}", operation_id="delete_thread_with_agent_id")
+async def delete_thread(
+    thread_id: str, user_id: str, agent_id: str = DEFAULT_AGENT
+) -> ThreadDeleted:
+    """
+    Delete a conversation and every file attached to it.
+
+    The thread must belong to `user_id` and `agent_id`; otherwise this returns 404 without
+    revealing whether it exists. Same trust model for `user_id` as /threads.
+    """
+    agent: AgentGraph = get_agent(agent_id)
+    checkpointer = getattr(agent, "checkpointer", None)
+    owner = await thread_owner(checkpointer, thread_id) if checkpointer else None
+    if owner is not None and owner != (user_id, agent_id):
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    if owner is not None and checkpointer is not None:
+        await checkpointer.adelete_thread(thread_id)
+    removed = await remove_thread_attachments(thread_id, user_id)
+    if owner is None and not removed:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    return ThreadDeleted(thread_id=thread_id, attachments_removed=removed)
 
 
 @app.get("/health")

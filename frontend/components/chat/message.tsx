@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertCircleIcon, CheckIcon, CopyIcon, RotateCcwIcon, ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckIcon,
+  CopyIcon,
+  FileTextIcon,
+  RotateCcwIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
+} from "lucide-react";
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,7 +23,16 @@ import { Blocks } from "./blocks";
 
 export const UserMessage = memo(function UserMessage({ turn }: { turn: UserTurn }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end gap-1.5">
+      {turn.attachments?.map((name) => (
+        <span
+          key={name}
+          className="inline-flex max-w-[85%] items-center gap-2 rounded-xl border px-3 py-2 text-sm sm:max-w-[70%]"
+        >
+          <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{name}</span>
+        </span>
+      ))}
       <div className="max-w-[85%] rounded-3xl bg-muted px-4 py-2.5 whitespace-pre-wrap sm:max-w-[70%]">{turn.text}</div>
     </div>
   );

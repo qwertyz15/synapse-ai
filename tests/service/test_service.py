@@ -440,29 +440,55 @@ def test_info(test_client, mock_settings) -> None:
     assert output.models == [OpenAIModelName.GPT_5_MINI, OpenAIModelName.GPT_5_NANO]
 
 
-def test_github_token_reaches_only_the_github_agent_as_context(test_client, mock_agent) -> None:
-    with patch(
-        "service.service.github_mcp_agent.ensure_tools", new_callable=AsyncMock
-    ) as ensure_tools:
+def test_github_headers_become_run_context_for_context_agents(test_client, mock_agent) -> None:
+    headers = {
+        "X-GitHub-Token": "ghu_usertoken",
+        "X-GitHub-Login": "octo",
+        "X-GitHub-Write": "true",
+    }
+    with (
+        patch(
+            "service.service.github_mcp_agent.ensure_tools", new_callable=AsyncMock
+        ) as ensure_agent,
+        patch("service.service.github_tools.ensure", new_callable=AsyncMock) as ensure_tools,
+    ):
         response = test_client.post(
-            "/github-mcp-agent/invoke",
-            json={"message": "hi"},
-            headers={"X-GitHub-Token": "ghu_usertoken"},
+            "/github-mcp-agent/invoke", json={"message": "hi"}, headers=headers
         )
         assert response.status_code == 200
-        ensure_tools.assert_awaited_once_with("ghu_usertoken")
+        ensure_agent.assert_awaited_once_with("ghu_usertoken")
         kwargs = mock_agent.ainvoke.await_args.kwargs
         assert kwargs["context"].github_token == "ghu_usertoken"
         assert "ghu_usertoken" not in json.dumps(kwargs["config"], default=str)
 
         mock_agent.ainvoke.reset_mock()
         response = test_client.post(
-            "/research-assistant/invoke",
-            json={"message": "hi"},
-            headers={"X-GitHub-Token": "ghu_usertoken"},
+            "/research-assistant/invoke", json={"message": "hi"}, headers=headers
         )
         assert response.status_code == 200
+        ensure_tools.assert_awaited_once_with("ghu_usertoken", True)
+        context = mock_agent.ainvoke.await_args.kwargs["context"]
+        assert (context.github_token, context.github_login, context.github_write) == (
+            "ghu_usertoken",
+            "octo",
+            True,
+        )
+
+        mock_agent.ainvoke.reset_mock()
+        response = test_client.post("/chatbot/invoke", json={"message": "hi"}, headers=headers)
+        assert response.status_code == 200
         assert "context" not in mock_agent.ainvoke.await_args.kwargs
+
+
+def test_research_assistant_without_github_headers_gets_empty_context(
+    test_client, mock_agent
+) -> None:
+    with patch("service.service.github_tools.ensure", new_callable=AsyncMock) as ensure_tools:
+        response = test_client.post("/research-assistant/invoke", json={"message": "hi"})
+    assert response.status_code == 200
+    ensure_tools.assert_not_awaited()
+    context = mock_agent.ainvoke.await_args.kwargs["context"]
+    assert context.github_token is None and context.github_write is False
 
 
 def test_github_token_is_reserved_in_agent_config(test_client, mock_agent) -> None:
@@ -470,3 +496,19 @@ def test_github_token_is_reserved_in_agent_config(test_client, mock_agent) -> No
         "/invoke", json={"message": "hi", "agent_config": {"github_token": "ghu_x"}}
     )
     assert response.status_code == 422
+
+
+def test_attachment_names_are_kept_on_the_human_message(test_client, mock_agent) -> None:
+    response = test_client.post(
+        "/invoke", json={"message": "who is this?", "attachments": ["cv.md"]}
+    )
+    assert response.status_code == 200
+    human = mock_agent.ainvoke.await_args.kwargs["input"]["messages"][0]
+    assert human.additional_kwargs == {"attachments": ["cv.md"]}
+
+    from service.utils import langchain_to_chat_message
+
+    assert langchain_to_chat_message(human).attachments == ["cv.md"]
+    plain = test_client.post("/invoke", json={"message": "hi"})
+    assert plain.status_code == 200
+    assert mock_agent.ainvoke.await_args.kwargs["input"]["messages"][0].additional_kwargs == {}

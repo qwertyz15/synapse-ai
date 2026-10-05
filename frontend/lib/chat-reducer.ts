@@ -19,7 +19,7 @@ export type SubAgentBlock = {
 };
 export type Block = TextBlock | ToolBlock | TaskBlock | SubAgentBlock;
 
-export type UserTurn = { id: string; role: "user"; text: string };
+export type UserTurn = { id: string; role: "user"; text: string; attachments?: string[] };
 export type AssistantTurn = {
   id: string;
   role: "assistant";
@@ -32,7 +32,7 @@ export type AssistantTurn = {
 export type Turn = UserTurn | AssistantTurn;
 
 export type ChatAction =
-  | { type: "user"; text: string }
+  | { type: "user"; text: string; attachments?: string[] }
   | { type: "event"; event: StreamEvent }
   | { type: "stopped" }
   | { type: "failed"; error: string; code?: string }
@@ -144,7 +144,7 @@ export function chatReducer(turns: Turn[], action: ChatAction): Turn[] {
     case "reset":
       return action.turns;
     case "user":
-      return [...turns, { id: nextId(), role: "user", text: action.text }];
+      return [...turns, { id: nextId(), role: "user", text: action.text, attachments: action.attachments }];
     case "stopped":
     case "failed": {
       const [next, turn] = currentAssistant(turns);
@@ -190,7 +190,8 @@ export function historyToTurns(messages: ChatMessage[]): Turn[] {
   for (const m of messages) {
     if (m.type === "human") {
       turns = finishTurn(turns);
-      turns = chatReducer(turns, { type: "user", text: m.content });
+      const attachments = m.attachments?.length ? m.attachments : undefined;
+      turns = chatReducer(turns, { type: "user", text: m.content, attachments });
     } else {
       turns = chatReducer(turns, { type: "event", event: { type: "message", content: m } });
     }

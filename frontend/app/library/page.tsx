@@ -35,7 +35,7 @@ function summarize(r: IngestionResult): string {
   return parts.length ? parts.join(", ") : "Nothing changed";
 }
 
-export default function DocumentsPage() {
+export default function LibraryPage() {
   const { sidebarOpen, setSidebarOpen, setMobileNavOpen } = useApp();
   const [docs, setDocs] = useState<RagDocument[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -104,13 +104,14 @@ export default function DocumentsPage() {
             <PanelLeftIcon />
           </IconButton>
         )}
-        <h1 className="px-2.5 text-base font-semibold">Documents</h1>
+        <h1 className="px-2.5 text-base font-semibold">Library</h1>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-8 px-4 pt-4 pb-12">
           <p className="text-sm text-muted-foreground">
-            Files here are indexed for the Research and RAG assistants, which search them to answer your questions.
+            Files in your library are searchable from every chat by the Research and RAG assistants. To use a file in
+            just one conversation, attach it with + in that chat instead.
           </p>
 
           <div
@@ -183,7 +184,7 @@ export default function DocumentsPage() {
               </div>
             ) : docs.length === 0 ? (
               <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
-                No documents yet. Upload one to get started.
+                Your library is empty. Upload a document to get started.
               </p>
             ) : (
               <ul className="divide-y rounded-xl border">

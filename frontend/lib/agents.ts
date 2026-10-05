@@ -6,9 +6,16 @@ const HIDDEN_AGENTS = new Set([
   "interrupt-agent",
   "command-agent",
   "knowledge-base-agent",
+  // Superseded by the GitHub connector in the research assistant.
+  "github-mcp-agent",
 ]);
 
 export const isVisibleAgent = (key: string) => !HIDDEN_AGENTS.has(key);
+
+export const CONNECTORS = ["github"] as const;
+export type Connector = (typeof CONNECTORS)[number];
+
+export const supportsConnectors = (agent: string) => agent === "research-assistant";
 
 const SUGGESTIONS: Record<string, string[]> = {
   "research-assistant": [
@@ -37,8 +44,17 @@ const SUGGESTIONS: Record<string, string[]> = {
   ],
 };
 
-export const suggestionsFor = (agent: string) =>
-  SUGGESTIONS[agent] ?? ["Hello! What can you do?", "Tell me a fun fact"];
+const GITHUB_SUGGESTIONS = [
+  "What are the most recent commits in my repositories?",
+  "Compare the handbook's IT security rules with the README of one of my repos",
+];
+
+export const suggestionsFor = (agent: string, connectors: readonly string[] = []) => {
+  const base = SUGGESTIONS[agent] ?? ["Hello! What can you do?", "Tell me a fun fact"];
+  return supportsConnectors(agent) && connectors.includes("github")
+    ? [...GITHUB_SUGGESTIONS, ...base.slice(0, 2)]
+    : base;
+};
 
 const ACRONYMS = new Set(["rag", "mcp", "bg"]);
 

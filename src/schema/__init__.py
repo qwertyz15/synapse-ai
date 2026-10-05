@@ -1,6 +1,9 @@
 from schema.models import AllModelEnum
 from schema.schema import (
     AgentInfo,
+    AttachmentResult,
+    ChatAttachment,
+    ChatAttachments,
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
@@ -11,6 +14,7 @@ from schema.schema import (
     RagDocuments,
     ServiceMetadata,
     StreamInput,
+    ThreadDeleted,
     ThreadSummary,
     UserInput,
     UserThreads,
@@ -34,4 +38,8 @@ __all__ = [
     "RagDocument",
     "RagDocuments",
     "IngestionResult",
+    "ThreadDeleted",
+    "AttachmentResult",
+    "ChatAttachment",
+    "ChatAttachments",
 ]

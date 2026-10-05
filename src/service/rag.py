@@ -12,10 +12,25 @@ from fastapi import APIRouter, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from core import settings
+from core.embeddings import get_embeddings
 from ingestion import IngestionReport, run_ingestion
+from ingestion.attachments import (
+    add_attachment,
+    delete_attachment,
+    delete_thread_attachments,
+    list_attachments,
+    open_attachment_store,
+)
 from ingestion.loader import SUPPORTED_EXTENSIONS
 from ingestion.manifest import list_indexed_documents
-from schema import IngestionResult, RagDocument, RagDocuments
+from schema import (
+    AttachmentResult,
+    ChatAttachment,
+    ChatAttachments,
+    IngestionResult,
+    RagDocument,
+    RagDocuments,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +84,9 @@ def list_documents() -> RagDocuments:
     )
 
 
-@router.post("/documents")
-async def upload_documents(files: list[UploadFile]) -> IngestionResult:
-    """
-    Save uploaded files to the data folder and ingest them.
-
-    A file with the same name as an existing one replaces it. Unsupported or oversized
-    files are listed in `rejected`; files that fail to parse are listed in `failed`.
-    """
-    data_dir = _data_dir()
-    data_dir.mkdir(parents=True, exist_ok=True)
+async def _read_uploads(files: list[UploadFile]) -> tuple[dict[str, bytes], dict[str, str]]:
+    """Accepted name -> content, and rejected name -> reason."""
+    accepted: dict[str, bytes] = {}
     rejected: dict[str, str] = {}
     for upload in files:
         # Path.name drops any directory parts a client sends, preventing path traversal.
@@ -93,6 +101,22 @@ async def upload_documents(files: list[UploadFile]) -> IngestionResult:
         if len(content) > MAX_UPLOAD_BYTES:
             rejected[name] = f"Larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB"
             continue
+        accepted[name] = content
+    return accepted, rejected
+
+
+@router.post("/documents")
+async def upload_documents(files: list[UploadFile]) -> IngestionResult:
+    """
+    Save uploaded files to the data folder and ingest them.
+
+    A file with the same name as an existing one replaces it. Unsupported or oversized
+    files are listed in `rejected`; files that fail to parse are listed in `failed`.
+    """
+    data_dir = _data_dir()
+    data_dir.mkdir(parents=True, exist_ok=True)
+    accepted, rejected = await _read_uploads(files)
+    for name, content in accepted.items():
         (data_dir / name).write_bytes(content)
 
     if len(rejected) == len(files):
@@ -112,3 +136,79 @@ async def delete_document(doc_id: str) -> IngestionResult:
     elif doc_id not in {d.doc_id for d in list_documents().documents}:
         raise HTTPException(status_code=404, detail="Document not found")
     return _result(await _ingest())
+
+
+def _attachments(thread_id: str, user_id: str) -> list[ChatAttachment]:
+    if not Path(settings.CHROMA_DB_PATH).is_dir():
+        return []
+    store = open_attachment_store(settings.CHROMA_DB_PATH)
+    return [
+        ChatAttachment(name=n, file_type=t, chunk_count=c, ingested_at=at)
+        for n, t, c, at in list_attachments(store, thread_id, user_id)
+    ]
+
+
+@router.get("/attachments")
+def list_chat_attachments(thread_id: str, user_id: str) -> ChatAttachments:
+    """List the files attached to one chat."""
+    return ChatAttachments(attachments=_attachments(thread_id, user_id))
+
+
+@router.post("/attachments")
+async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) -> AttachmentResult:
+    """
+    Index files for a single chat. They are searchable only from that conversation (and user),
+    alongside the shared library. A file with the same name replaces the earlier one.
+    """
+    accepted, rejected = await _read_uploads(files)
+    attached: list[str] = []
+    failed: dict[str, str] = {}
+    if accepted:
+        try:
+            embeddings = get_embeddings()
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        store = open_attachment_store(settings.CHROMA_DB_PATH, embeddings)
+        async with _ingestion_lock:
+            for name, content in accepted.items():
+                try:
+                    await run_in_threadpool(
+                        add_attachment,
+                        store,
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        name=name,
+                        content=content,
+                        chunk_size=settings.RAG_CHUNK_SIZE,
+                        chunk_overlap=settings.RAG_CHUNK_OVERLAP,
+                    )
+                    attached.append(name)
+                except Exception as e:
+                    logger.exception("Failed to attach %s", name)
+                    failed[name] = f"{type(e).__name__}: {e}"
+    return AttachmentResult(
+        attached=attached,
+        failed=failed,
+        rejected=rejected,
+        attachments=_attachments(thread_id, user_id),
+    )
+
+
+@router.delete("/attachments/{name:path}")
+async def detach_from_chat(name: str, thread_id: str, user_id: str) -> ChatAttachments:
+    """Remove a file attached to a chat."""
+    store = open_attachment_store(settings.CHROMA_DB_PATH)
+    async with _ingestion_lock:
+        removed = await run_in_threadpool(delete_attachment, store, thread_id, user_id, name)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    return ChatAttachments(attachments=_attachments(thread_id, user_id))
+
+
+async def remove_thread_attachments(thread_id: str, user_id: str) -> int:
+    """Delete every file attached to a chat (used when the chat itself is deleted)."""
+    if not Path(settings.CHROMA_DB_PATH).is_dir():
+        return 0
+    store = open_attachment_store(settings.CHROMA_DB_PATH)
+    async with _ingestion_lock:
+        return await run_in_threadpool(delete_thread_attachments, store, thread_id, user_id)

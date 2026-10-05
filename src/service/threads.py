@@ -107,3 +107,11 @@ async def list_user_threads(
     # Checkpoint IDs are time-ordered UUIDs, so the tip's ID sorts by last update.
     summaries.sort(key=lambda item: item[0], reverse=True)
     return [summary for _, summary in summaries[:limit]]
+
+
+async def thread_owner(checkpointer: Any, thread_id: str) -> tuple[str | None, str | None] | None:
+    """(user_id, agent_id) recorded on a thread's latest checkpoint, or None if it has none."""
+    tip = await checkpointer.aget_tuple(RunnableConfig(configurable={"thread_id": thread_id}))
+    if tip is None:
+        return None
+    return tip.metadata.get("user_id"), tip.metadata.get("agent_id")

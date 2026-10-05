@@ -1,18 +1,19 @@
 "use client";
 
 import { ArrowDownIcon } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import { useApp } from "@/components/app-provider";
 import { GithubConnectCard, GithubStatusBar } from "@/components/github-connect";
 import { Button } from "@/components/ui/button";
-import { suggestionsFor } from "@/lib/agents";
+import { suggestionsFor, supportsConnectors } from "@/lib/agents";
 import { GITHUB_AGENT } from "@/lib/constants";
 import { ApiError, streamChat } from "@/lib/api";
 import { chatReducer, type Turn } from "@/lib/chat-reducer";
 
 import { ChatHeader } from "./chat-header";
 import { Composer, type ComposerHandle } from "./composer";
+import { useChatAttachments } from "./use-chat-attachments";
 import { AssistantMessage, UserMessage } from "./message";
 
 type Props = {
@@ -23,8 +24,12 @@ type Props = {
 };
 
 export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: Props) {
-  const { info, model, refreshThreads, github } = useApp();
+  const { info, model, refreshThreads, github, connectors, githubWrite } = useApp();
+  const activeConnectors = useMemo(() => (supportsConnectors(agent) ? connectors : []), [agent, connectors]);
   const [turns, dispatch] = useReducer(chatReducer, initialTurns);
+  const [initiallySent] = useState(() => initialTurns.flatMap((t) => (t.role === "user" ? (t.attachments ?? []) : [])));
+  const chatAttachments = useChatAttachments(threadId, isNew, initiallySent);
+  const { unsent, markSent } = chatAttachments;
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const composerRef = useRef<ComposerHandle>(null);
@@ -38,7 +43,9 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
   const send = useCallback(
     async (text: string) => {
       if (abortRef.current) return;
-      dispatch({ type: "user", text });
+      const attachments = unsent.map((a) => a.name);
+      dispatch({ type: "user", text, attachments: attachments.length ? attachments : undefined });
+      markSent(attachments);
       stickRef.current = true;
       if (!urlSetRef.current) {
         urlSetRef.current = true;
@@ -50,7 +57,14 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
       try {
         for await (const event of streamChat(
           agent,
-          { message: text, thread_id: threadId, model: model || undefined },
+          {
+            message: text,
+            thread_id: threadId,
+            model: model || undefined,
+            connectors: activeConnectors,
+            github_write: activeConnectors.includes("github") && githubWrite,
+            attachments,
+          },
           controller.signal,
         )) {
           dispatch({ type: "event", event });
@@ -71,7 +85,7 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
         composerRef.current?.focus();
       }
     },
-    [agent, threadId, model, refreshThreads],
+    [agent, threadId, model, refreshThreads, activeConnectors, githubWrite, unsent, markSent],
   );
 
   const stop = useCallback(() => abortRef.current?.abort(), []);
@@ -110,6 +124,8 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
   const composer = (
     <Composer
       ref={composerRef}
+      agent={agent}
+      chat={chatAttachments}
       onSend={send}
       onStop={stop}
       streaming={streaming}
@@ -130,7 +146,7 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
             {isGithubAgent && <GithubStatusBar />}
             {needsGithub ? <GithubConnectCard /> : needsInstall ? <GithubConnectCard mode="install" /> : composer}
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {(agent && !needsGithub && !needsInstall ? suggestionsFor(agent) : []).map((s) => (
+              {(agent && !needsGithub && !needsInstall ? suggestionsFor(agent, activeConnectors) : []).map((s) => (
                 <button
                   key={s}
                   type="button"

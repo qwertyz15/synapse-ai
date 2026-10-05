@@ -7,6 +7,7 @@ import { useApp } from "@/components/app-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -30,7 +31,7 @@ function useReturnTo() {
 }
 
 export function GithubSidebarItem() {
-  const { github, disconnectGithub } = useApp();
+  const { github, disconnectGithub, githubWrite, setGithubWrite } = useApp();
   const returnTo = useReturnTo();
   if (!github?.configured) return null;
 
@@ -68,6 +69,13 @@ export function GithubSidebarItem() {
             <ExternalLinkIcon /> Manage on GitHub
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem checked={githubWrite} onCheckedChange={setGithubWrite}>
+          <div className="flex flex-col">
+            <span>Allow changes</span>
+            <span className="text-xs text-muted-foreground">Create issues, PRs and edit files</span>
+          </div>
+        </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={disconnectGithub}>
           <UnplugIcon /> Disconnect GitHub

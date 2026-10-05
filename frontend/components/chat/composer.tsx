@@ -4,6 +4,8 @@ import { ArrowUpIcon, ChevronDownIcon, SquareIcon } from "lucide-react";
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 
 import { useApp } from "@/components/app-provider";
+import { AttachMenu, AttachmentChips, ChatFilesButton, ConnectorChips } from "@/components/chat/attach-menu";
+import type { ChatAttachments } from "@/components/chat/use-chat-attachments";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +19,8 @@ import {
 export type ComposerHandle = { focus: () => void };
 
 type Props = {
+  agent: string;
+  chat: ChatAttachments;
   onSend: (text: string) => void;
   onStop: () => void;
   streaming: boolean;
@@ -25,7 +29,7 @@ type Props = {
 };
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { onSend, onStop, streaming, disabled, placeholder = "Ask anything" },
+  { agent, chat, onSend, onStop, streaming, disabled, placeholder = "Ask anything" },
   ref,
 ) {
   const [text, setText] = useState("");
@@ -55,6 +59,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       }}
       className="rounded-3xl border bg-background shadow-sm transition-shadow focus-within:shadow-md dark:bg-muted/40"
     >
+      <AttachmentChips chat={chat} />
       <textarea
         ref={textarea}
         value={text}
@@ -71,8 +76,13 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         aria-label="Message"
         className="block max-h-60 w-full resize-none bg-transparent px-5 pt-4 pb-2 text-base outline-none placeholder:text-muted-foreground"
       />
-      <div className="flex items-center justify-between px-3 pb-3">
-        <ModelPicker />
+      <div className="flex items-center justify-between gap-2 px-3 pb-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          <AttachMenu agent={agent} chat={chat} />
+          <ChatFilesButton chat={chat} />
+          <ConnectorChips agent={agent} />
+          <ModelPicker />
+        </div>
         {streaming ? (
           <Button type="button" size="icon" className="rounded-full" onClick={onStop} aria-label="Stop generating">
             <SquareIcon className="size-3.5 fill-current" />

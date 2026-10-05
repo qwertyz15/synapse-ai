@@ -13,10 +13,14 @@ const ROUTES: { method: string; pattern: RegExp; userId?: "body" | "query" }[] =
   { method: "POST", pattern: new RegExp(`^${AGENT}/stream$`), userId: "body" },
   { method: "POST", pattern: new RegExp(`^${AGENT}/history$`) },
   { method: "GET", pattern: new RegExp(`^${AGENT}/threads$`), userId: "query" },
+  { method: "DELETE", pattern: new RegExp(`^${AGENT}/threads/[^/]+$`), userId: "query" },
   { method: "POST", pattern: /^feedback$/ },
   { method: "GET", pattern: /^rag\/documents$/ },
   { method: "POST", pattern: /^rag\/documents$/ },
   { method: "DELETE", pattern: /^rag\/documents\/.+$/ },
+  { method: "GET", pattern: /^rag\/attachments$/, userId: "query" },
+  { method: "POST", pattern: /^rag\/attachments$/, userId: "query" },
+  { method: "DELETE", pattern: /^rag\/attachments\/.+$/, userId: "query" },
 ];
 
 async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]">) {
@@ -35,30 +39,37 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   const headers = new Headers();
   if (process.env.AUTH_SECRET) headers.set("Authorization", `Bearer ${process.env.AUTH_SECRET}`);
 
+  let body: BodyInit | undefined;
+  let wantsGithub = false;
+  let githubWrite = false;
+  if (req.method === "POST") {
+    const contentType = req.headers.get("content-type") ?? "";
+    headers.set("Content-Type", contentType);
+    if (route.userId === "body") {
+      const { connectors, github_write, ...json } = await req.json();
+      wantsGithub = segments[0] === GITHUB_AGENT || (Array.isArray(connectors) && connectors.includes("github"));
+      githubWrite = github_write === true;
+      body = JSON.stringify({ ...json, user_id: uid });
+    } else {
+      body = await req.arrayBuffer();
+    }
+  }
+
+  // GitHub credentials are only forwarded for runs that asked for the GitHub connector.
   let github: { session: GithubSession | null; updated: boolean; cleared: boolean } | null = null;
-  if (route.userId === "body" && segments[0] === GITHUB_AGENT) {
+  if (wantsGithub) {
     github = await resolveSession(req);
     if (!github.session) {
       const res = NextResponse.json(
-        { detail: "Connect your GitHub account to use this agent.", code: "github_not_connected" },
+        { detail: "Connect your GitHub account to use GitHub in this chat.", code: "github_not_connected" },
         { status: 401 },
       );
       if (github.cleared) clearSession(res, req);
       return res;
     }
     headers.set("X-GitHub-Token", github.session.accessToken);
-  }
-
-  let body: BodyInit | undefined;
-  if (req.method === "POST") {
-    const contentType = req.headers.get("content-type") ?? "";
-    headers.set("Content-Type", contentType);
-    if (route.userId === "body") {
-      const json = await req.json();
-      body = JSON.stringify({ ...json, user_id: uid });
-    } else {
-      body = await req.arrayBuffer();
-    }
+    headers.set("X-GitHub-Login", github.session.login);
+    headers.set("X-GitHub-Write", githubWrite ? "true" : "false");
   }
 
   let upstream: Response;

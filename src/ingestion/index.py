@@ -1,16 +1,31 @@
+import threading
 from pathlib import Path
 
+import chromadb
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 COLLECTION_NAME = "rag_documents"
 
+_clients: dict[str, chromadb.ClientAPI] = {}
+_clients_lock = threading.Lock()
+
+
+def chroma_client(db_path: str | Path) -> chromadb.ClientAPI:
+    # Chroma's client setup races when threads create clients for the same path at once
+    # (parallel tool calls), failing with KeyError / "Could not connect to tenant".
+    key = str(Path(db_path).resolve())
+    with _clients_lock:
+        if key not in _clients:
+            _clients[key] = chromadb.PersistentClient(path=key)
+        return _clients[key]
+
 
 def open_vectorstore(db_path: str | Path, embeddings: Embeddings) -> Chroma:
     return Chroma(
         collection_name=COLLECTION_NAME,
-        persist_directory=str(db_path),
+        client=chroma_client(db_path),
         embedding_function=embeddings,
     )
 

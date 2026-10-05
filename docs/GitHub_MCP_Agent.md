@@ -49,6 +49,19 @@ GitHub menu also has **Choose repositories** to change which repos the app can r
 Private repositories are only visible once the app is *installed* on them. Authorizing alone gives access
 to your identity and public data, so a private repo returns 404 until it's selected in the install step.
 
+## GitHub in the Research Assistant (connector)
+
+In the web UI the GitHub tools are also available to the **Research Assistant**: click **+** in the
+message box → **Connectors** → **GitHub**. A GitHub chip appears, and that chat can combine your
+documents, web search, the calculator and your repositories in one answer. The dedicated GitHub MCP
+agent is hidden in the web UI because of this, but still works through the API.
+
+- Only the `context`, `repos`, `issues` and `pull_requests` toolsets are loaded (`X-MCP-Toolsets`),
+  which keeps prompts small and tool choice accurate.
+- Every call is **read-only** (`X-MCP-Readonly: true`) unless **Allow changes** is ticked in the
+  sidebar's GitHub menu. API clients opt in with the `X-GitHub-Write: true` header.
+- Without the chip, the web server never sends your GitHub token to the service.
+
 ## Configuration
 
 The settings below are for using the agent without the web UI (API or Streamlit), with one shared token.

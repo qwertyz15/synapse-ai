@@ -16,6 +16,7 @@ export type ChatMessage = {
   run_id?: string | null;
   response_metadata?: Record<string, unknown>;
   custom_data?: Record<string, unknown>;
+  attachments?: string[];
 };
 
 export type AgentInfo = { key: string; description: string };
@@ -65,3 +66,17 @@ export type StreamEvent =
   | { type: "message"; content: ChatMessage }
   | { type: "error"; content: string }
   | { type: "done" };
+
+export type ChatAttachment = {
+  name: string;
+  file_type: string;
+  chunk_count: number;
+  ingested_at: string;
+};
+
+export type AttachmentResult = {
+  attachments: ChatAttachment[];
+  attached: string[];
+  failed: Record<string, string>;
+  rejected: Record<string, string>;
+};

@@ -46,6 +46,7 @@ def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
             human_message = ChatMessage(
                 type="human",
                 content=convert_message_content_to_string(message.content),
+                attachments=list(message.additional_kwargs.get("attachments") or []),
             )
             return human_message
         case AIMessage():

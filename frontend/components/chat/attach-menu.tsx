@@ -33,11 +33,21 @@ import { supportsConnectors } from "@/lib/agents";
 import { githubLoginUrl, uploadDocuments } from "@/lib/api";
 
 import type { ChatAttachments } from "./use-chat-attachments";
+import type { ChatConnectors } from "./use-chat-connectors";
 
 const ACCEPT = ".pdf,.docx,.txt,.md";
 
-export function AttachMenu({ agent, chat }: { agent: string; chat: ChatAttachments }) {
-  const { github, connectors, toggleConnector } = useApp();
+export function AttachMenu({
+  agent,
+  chat,
+  connectors: chatConnectors,
+}: {
+  agent: string;
+  chat: ChatAttachments;
+  connectors: ChatConnectors;
+}) {
+  const { github } = useApp();
+  const { connectors, toggle: toggleConnector, enableAfterRedirect } = chatConnectors;
   const pathname = usePathname();
   const libraryInput = useRef<HTMLInputElement>(null);
   const chatInput = useRef<HTMLInputElement>(null);
@@ -64,7 +74,7 @@ export function AttachMenu({ agent, chat }: { agent: string; chat: ChatAttachmen
 
   const setGithub = (on: boolean) => {
     if (on && !github?.connected) {
-      toggleConnector("github", true);
+      enableAfterRedirect("github");
       window.location.href = githubLoginUrl(pathname || "/");
       return;
     }
@@ -145,8 +155,9 @@ export function AttachMenu({ agent, chat }: { agent: string; chat: ChatAttachmen
   );
 }
 
-export function ConnectorChips({ agent }: { agent: string }) {
-  const { github, connectors, toggleConnector, githubWrite } = useApp();
+export function ConnectorChips({ agent, connectors: chatConnectors }: { agent: string; connectors: ChatConnectors }) {
+  const { github, githubWrite } = useApp();
+  const { connectors, toggle: toggleConnector } = chatConnectors;
   if (!supportsConnectors(agent) || !github?.configured || !connectors.includes("github")) return null;
   return (
     <span className="inline-flex h-7 items-center gap-1.5 rounded-full border bg-muted/50 pr-1 pl-2.5 text-xs">

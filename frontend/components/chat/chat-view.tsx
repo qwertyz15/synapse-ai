@@ -14,6 +14,7 @@ import { chatReducer, type Turn } from "@/lib/chat-reducer";
 import { ChatHeader } from "./chat-header";
 import { Composer, type ComposerHandle } from "./composer";
 import { useChatAttachments } from "./use-chat-attachments";
+import { useChatConnectors } from "./use-chat-connectors";
 import { AssistantMessage, UserMessage } from "./message";
 
 type Props = {
@@ -24,7 +25,9 @@ type Props = {
 };
 
 export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: Props) {
-  const { info, model, refreshThreads, github, connectors, githubWrite } = useApp();
+  const { info, model, refreshThreads, github, githubWrite } = useApp();
+  const chatConnectors = useChatConnectors(threadId);
+  const { connectors } = chatConnectors;
   const activeConnectors = useMemo(() => (supportsConnectors(agent) ? connectors : []), [agent, connectors]);
   const [turns, dispatch] = useReducer(chatReducer, initialTurns);
   const [initiallySent] = useState(() => initialTurns.flatMap((t) => (t.role === "user" ? (t.attachments ?? []) : [])));
@@ -126,6 +129,7 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
       ref={composerRef}
       agent={agent}
       chat={chatAttachments}
+      connectors={chatConnectors}
       onSend={send}
       onStop={stop}
       streaming={streaming}

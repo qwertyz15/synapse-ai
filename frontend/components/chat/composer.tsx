@@ -6,6 +6,7 @@ import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } fr
 import { useApp } from "@/components/app-provider";
 import { AttachMenu, AttachmentChips, ChatFilesButton, ConnectorChips } from "@/components/chat/attach-menu";
 import type { ChatAttachments } from "@/components/chat/use-chat-attachments";
+import type { ChatConnectors } from "@/components/chat/use-chat-connectors";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ export type ComposerHandle = { focus: () => void };
 type Props = {
   agent: string;
   chat: ChatAttachments;
+  connectors: ChatConnectors;
   onSend: (text: string) => void;
   onStop: () => void;
   streaming: boolean;
@@ -29,7 +31,7 @@ type Props = {
 };
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { agent, chat, onSend, onStop, streaming, disabled, placeholder = "Ask anything" },
+  { agent, chat, connectors, onSend, onStop, streaming, disabled, placeholder = "Ask anything" },
   ref,
 ) {
   const [text, setText] = useState("");
@@ -78,9 +80,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
       />
       <div className="flex items-center justify-between gap-2 px-3 pb-3">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
-          <AttachMenu agent={agent} chat={chat} />
+          <AttachMenu agent={agent} chat={chat} connectors={connectors} />
           <ChatFilesButton chat={chat} />
-          <ConnectorChips agent={agent} />
+          <ConnectorChips agent={agent} connectors={connectors} />
           <ModelPicker />
         </div>
         {streaming ? (

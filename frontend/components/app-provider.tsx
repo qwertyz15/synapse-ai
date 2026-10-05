@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { isVisibleAgent, type Connector } from "@/lib/agents";
+import { isVisibleAgent } from "@/lib/agents";
 import { disconnectGithub, getAllThreads, getGithubStatus, getInfo, type GithubStatus } from "@/lib/api";
 import type { ServiceMetadata, ThreadInfo } from "@/lib/types";
 
@@ -23,8 +23,6 @@ type AppState = {
   setMobileNavOpen: (open: boolean) => void;
   github: GithubStatus | null;
   disconnectGithub: () => Promise<void>;
-  connectors: Connector[];
-  toggleConnector: (connector: Connector, on: boolean) => void;
   githubWrite: boolean;
   setGithubWrite: (on: boolean) => void;
 };
@@ -40,7 +38,6 @@ const AppContext = createContext<AppState | null>(null);
 const STORAGE_AGENT = "ui.agent";
 const STORAGE_MODEL = "ui.model";
 const STORAGE_SIDEBAR = "ui.sidebar";
-const STORAGE_CONNECTORS = "ui.connectors";
 const STORAGE_GITHUB_WRITE = "ui.githubWrite";
 
 function load(key: string): string | null {
@@ -67,22 +64,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpenState] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [github, setGithub] = useState<GithubStatus | null>(null);
-  const [connectors, setConnectors] = useState<Connector[]>([]);
   const [githubWrite, setGithubWriteState] = useState(false);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- restoring per-browser preferences after hydration */
-    setConnectors(load(STORAGE_CONNECTORS) === "github" ? ["github"] : []);
     setGithubWriteState(load(STORAGE_GITHUB_WRITE) === "true");
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
-
-  const toggleConnector = useCallback((connector: Connector, on: boolean) => {
-    setConnectors((current) => {
-      const next = on ? [...new Set([...current, connector])] : current.filter((c) => c !== connector);
-      save(STORAGE_CONNECTORS, next.join(","));
-      return next;
-    });
   }, []);
 
   const setGithubWrite = useCallback((on: boolean) => {
@@ -109,7 +96,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const disconnect = useCallback(async () => {
     try {
       await disconnectGithub();
-      toggleConnector("github", false);
       setGithub((g) => (g ? { ...g, connected: false, login: null, avatar_url: null, installed: null } : g));
       toast.success("GitHub disconnected", {
         description: "The app may still be installed on your repositories.",
@@ -121,7 +107,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {
       toast.error("Couldn't disconnect GitHub");
     }
-  }, [toggleConnector]);
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring a per-browser preference after hydration
@@ -185,8 +171,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setMobileNavOpen,
       github,
       disconnectGithub: disconnect,
-      connectors,
-      toggleConnector,
       githubWrite,
       setGithubWrite,
     }),
@@ -201,8 +185,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       mobileNavOpen,
       github,
       disconnect,
-      connectors,
-      toggleConnector,
       githubWrite,
       setGithubWrite,
     ],

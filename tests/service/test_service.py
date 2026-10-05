@@ -438,3 +438,35 @@ def test_info(test_client, mock_settings) -> None:
 
     assert output.default_model == OpenAIModelName.GPT_5_NANO
     assert output.models == [OpenAIModelName.GPT_5_MINI, OpenAIModelName.GPT_5_NANO]
+
+
+def test_github_token_reaches_only_the_github_agent_as_context(test_client, mock_agent) -> None:
+    with patch(
+        "service.service.github_mcp_agent.ensure_tools", new_callable=AsyncMock
+    ) as ensure_tools:
+        response = test_client.post(
+            "/github-mcp-agent/invoke",
+            json={"message": "hi"},
+            headers={"X-GitHub-Token": "ghu_usertoken"},
+        )
+        assert response.status_code == 200
+        ensure_tools.assert_awaited_once_with("ghu_usertoken")
+        kwargs = mock_agent.ainvoke.await_args.kwargs
+        assert kwargs["context"].github_token == "ghu_usertoken"
+        assert "ghu_usertoken" not in json.dumps(kwargs["config"], default=str)
+
+        mock_agent.ainvoke.reset_mock()
+        response = test_client.post(
+            "/research-assistant/invoke",
+            json={"message": "hi"},
+            headers={"X-GitHub-Token": "ghu_usertoken"},
+        )
+        assert response.status_code == 200
+        assert "context" not in mock_agent.ainvoke.await_args.kwargs
+
+
+def test_github_token_is_reserved_in_agent_config(test_client, mock_agent) -> None:
+    response = test_client.post(
+        "/invoke", json={"message": "hi", "agent_config": {"github_token": "ghu_x"}}
+    )
+    assert response.status_code == 422

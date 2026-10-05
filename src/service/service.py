@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -29,6 +29,7 @@ from langsmith import Client as LangsmithClient
 from langsmith import uuid7
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
+from agents.github_mcp_agent.github_mcp_agent import GitHubContext, github_mcp_agent
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -138,8 +139,20 @@ async def info() -> ServiceMetadata:
     )
 
 
+GITHUB_AGENT_ID = "github-mcp-agent"
+GitHubToken = Annotated[str | None, Header(alias="X-GitHub-Token")]
+
+
+async def _run_context(agent_id: str, github_token: str | None) -> GitHubContext | None:
+    # The token travels as run context, never in config, so it isn't written to checkpoints.
+    if agent_id != GITHUB_AGENT_ID:
+        return None
+    await github_mcp_agent.ensure_tools(github_token)
+    return GitHubContext(github_token=github_token)
+
+
 async def _handle_input(
-    user_input: UserInput, agent: AgentGraph, agent_id: str
+    user_input: UserInput, agent: AgentGraph, agent_id: str, context: Any = None
 ) -> tuple[dict[str, Any], UUID]:
     """
     Parse user input and handle any required interrupt resumption.
@@ -163,7 +176,7 @@ async def _handle_input(
 
     if user_input.agent_config:
         # Check for reserved keys (including 'model' even if not in configurable)
-        reserved_keys = {"thread_id", "user_id", "model"}
+        reserved_keys = {"thread_id", "user_id", "model", "github_token"}
         if overlap := reserved_keys & user_input.agent_config.keys():
             raise HTTPException(
                 status_code=422,
@@ -192,17 +205,21 @@ async def _handle_input(
     else:
         input = {"messages": [HumanMessage(content=user_input.message)]}
 
-    kwargs = {
+    kwargs: dict[str, Any] = {
         "input": input,
         "config": config,
     }
+    if context is not None:
+        kwargs["context"] = context
 
     return kwargs, run_id
 
 
 @router.post("/{agent_id}/invoke", operation_id="invoke_with_agent_id")
 @router.post("/invoke")
-async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
+async def invoke(
+    user_input: UserInput, agent_id: str = DEFAULT_AGENT, x_github_token: GitHubToken = None
+) -> ChatMessage:
     """
     Invoke an agent with user input to retrieve a final response.
 
@@ -216,8 +233,9 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
+    context = await _run_context(agent_id, x_github_token)
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id, context)
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
@@ -243,15 +261,16 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
 
 
 async def message_generator(
-    user_input: StreamInput, agent_id: str = DEFAULT_AGENT
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT, github_token: str | None = None
 ) -> AsyncGenerator[str, None]:
     """
     Generate a stream of messages from the agent.
 
     This is the workhorse method for the /stream endpoint.
     """
+    context = await _run_context(agent_id, github_token)
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id, context)
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
@@ -383,7 +402,9 @@ def _sse_response_example() -> dict[int | str, Any]:
     operation_id="stream_with_agent_id",
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
-async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
+async def stream(
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT, x_github_token: GitHubToken = None
+) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
 
@@ -395,7 +416,7 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
     return StreamingResponse(
-        message_generator(user_input, agent_id),
+        message_generator(user_input, agent_id, x_github_token),
         media_type="text/event-stream",
     )
 

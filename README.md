@@ -52,7 +52,7 @@ echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 docker compose watch
 ```
 
-The web UI is then at http://localhost:3000 and the Streamlit app at http://localhost:8501.
+The web UI is then at <http://localhost:3000> and the Streamlit app at <http://localhost:8501>.
 
 ### Architecture Diagram
 

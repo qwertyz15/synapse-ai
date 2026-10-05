@@ -4,9 +4,11 @@ import { ArrowDownIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 
 import { useApp } from "@/components/app-provider";
+import { GithubConnectCard, GithubStatusBar } from "@/components/github-connect";
 import { Button } from "@/components/ui/button";
 import { suggestionsFor } from "@/lib/agents";
-import { streamChat } from "@/lib/api";
+import { GITHUB_AGENT } from "@/lib/constants";
+import { ApiError, streamChat } from "@/lib/api";
 import { chatReducer, type Turn } from "@/lib/chat-reducer";
 
 import { ChatHeader } from "./chat-header";
@@ -21,7 +23,7 @@ type Props = {
 };
 
 export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: Props) {
-  const { info, model, refreshThreads } = useApp();
+  const { info, model, refreshThreads, github } = useApp();
   const [turns, dispatch] = useReducer(chatReducer, initialTurns);
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -56,7 +58,12 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
         dispatch({ type: "event", event: { type: "done" } });
       } catch (err) {
         if (controller.signal.aborted) dispatch({ type: "stopped" });
-        else dispatch({ type: "failed", error: err instanceof Error ? err.message : String(err) });
+        else
+          dispatch({
+            type: "failed",
+            error: err instanceof Error ? err.message : String(err),
+            code: err instanceof ApiError ? err.code : undefined,
+          });
       } finally {
         abortRef.current = null;
         setStreaming(false);
@@ -96,6 +103,9 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
 
   const description = info?.agents.find((a) => a.key === agent)?.description;
   const empty = turns.length === 0;
+  const isGithubAgent = agent === GITHUB_AGENT && !!github?.configured;
+  const needsGithub = isGithubAgent && !github?.connected;
+  const needsInstall = isGithubAgent && !!github?.connected && github.installed === false;
 
   const composer = (
     <Composer
@@ -103,8 +113,8 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
       onSend={send}
       onStop={stop}
       streaming={streaming}
-      disabled={!info}
-      placeholder={empty ? "Ask anything" : "Reply…"}
+      disabled={!info || needsGithub}
+      placeholder={needsGithub ? "Connect GitHub to chat with this agent" : empty ? "Ask anything" : "Reply…"}
     />
   );
 
@@ -117,9 +127,10 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
           <div className="w-full max-w-3xl">
             <h1 className="mb-2 text-center text-3xl font-semibold tracking-tight">What can I help with?</h1>
             {description && <p className="mb-8 text-center text-sm text-muted-foreground">{description}</p>}
-            {composer}
+            {isGithubAgent && <GithubStatusBar />}
+            {needsGithub ? <GithubConnectCard /> : needsInstall ? <GithubConnectCard mode="install" /> : composer}
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {(agent ? suggestionsFor(agent) : []).map((s) => (
+              {(agent && !needsGithub && !needsInstall ? suggestionsFor(agent) : []).map((s) => (
                 <button
                   key={s}
                   type="button"

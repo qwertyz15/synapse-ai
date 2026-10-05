@@ -29,7 +29,12 @@ const SUGGESTIONS: Record<string, string[]> = {
     "Give me three ideas for a weekend project",
     "What's the difference between RAG and fine-tuning?",
   ],
-  "github-mcp-agent": ["List the open issues in my repository", "Show the latest commits"],
+  "github-mcp-agent": [
+    "Which repositories can you access?",
+    "Who am I on GitHub?",
+    "List the recent commits in qwertyz15/agent-service-toolkit",
+    "Show the open issues in qwertyz15/agent-service-toolkit",
+  ],
 };
 
 export const suggestionsFor = (agent: string) =>

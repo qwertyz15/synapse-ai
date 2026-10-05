@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { isVisibleAgent } from "@/lib/agents";
-import { getAllThreads, getInfo } from "@/lib/api";
+import { disconnectGithub, getAllThreads, getGithubStatus, getInfo, type GithubStatus } from "@/lib/api";
 import type { ServiceMetadata, ThreadInfo } from "@/lib/types";
 
 type AppState = {
@@ -20,6 +21,14 @@ type AppState = {
   setSidebarOpen: (open: boolean) => void;
   mobileNavOpen: boolean;
   setMobileNavOpen: (open: boolean) => void;
+  github: GithubStatus | null;
+  disconnectGithub: () => Promise<void>;
+};
+
+const GITHUB_ERRORS: Record<string, string> = {
+  access_denied: "GitHub access wasn't granted.",
+  not_configured: "GitHub isn't set up on this server (missing GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET).",
+  invalid_state: "The GitHub sign-in expired or was opened in another browser. Please try again.",
 };
 
 const AppContext = createContext<AppState | null>(null);
@@ -51,6 +60,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<ThreadInfo[] | null>(null);
   const [sidebarOpen, setSidebarOpenState] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [github, setGithub] = useState<GithubStatus | null>(null);
+
+  useEffect(() => {
+    getGithubStatus()
+      .then(setGithub)
+      .catch(() => setGithub({ configured: false, connected: false, login: null, avatar_url: null }));
+
+    const url = new URL(window.location.href);
+    const result = url.searchParams.get("github");
+    if (!result) return;
+    if (result === "connected") toast.success("GitHub connected");
+    else
+      toast.error(GITHUB_ERRORS[url.searchParams.get("reason") ?? ""] ?? "Couldn't connect GitHub. Please try again.");
+    url.searchParams.delete("github");
+    url.searchParams.delete("reason");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }, []);
+
+  const disconnect = useCallback(async () => {
+    try {
+      await disconnectGithub();
+      setGithub((g) => (g ? { ...g, connected: false, login: null, avatar_url: null, installed: null } : g));
+      toast.success("GitHub disconnected", {
+        description: "The app may still be installed on your repositories.",
+        action: {
+          label: "Manage on GitHub",
+          onClick: () => window.open("https://github.com/settings/installations", "_blank", "noopener"),
+        },
+      });
+    } catch {
+      toast.error("Couldn't disconnect GitHub");
+    }
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring a per-browser preference after hydration
@@ -112,8 +154,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       mobileNavOpen,
       setMobileNavOpen,
+      github,
+      disconnectGithub: disconnect,
     }),
-    [info, infoError, agent, model, threads, refreshThreads, sidebarOpen, mobileNavOpen],
+    [info, infoError, agent, model, threads, refreshThreads, sidebarOpen, mobileNavOpen, github, disconnect],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

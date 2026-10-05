@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import { useMemo, useState } from "react";
 
 import { useApp } from "@/components/app-provider";
+import { GithubSidebarItem } from "@/components/github-connect";
 import { IconButton } from "@/components/icon-button";
 import {
   DropdownMenu,
@@ -154,6 +155,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <div className="border-t border-sidebar-border p-2">
+        <GithubSidebarItem />
         <ThemeMenu />
       </div>
     </div>

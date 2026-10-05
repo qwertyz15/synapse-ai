@@ -15,15 +15,50 @@ The GitHub MCP Agent is a specialized agent that uses GitHub MCP (Model Context 
 - File operations (read, write, search)
 - Commit operations (create, view history)
 
+## Connect GitHub (recommended)
+
+In the web UI, each person clicks **Connect GitHub** in the sidebar, approves access on github.com,
+and the agent then works with *their* repositories. No one has to create a token by hand.
+
+1. Create a GitHub App: **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**
+   - Homepage URL: `http://localhost:3000`
+   - Callback URL: `http://localhost:3000/api/github/callback` (add your hosted URL too when you deploy)
+   - Tick **Request user authorization (OAuth) during installation**; leave **Allow wildcard matching** off
+   - Webhook: untick **Active**
+   - Repository permissions: Contents *Read-only*, Issues *Read and write*, Pull requests *Read and write*
+     (Metadata is added automatically). Leave organization, account and enterprise permissions at *No access*.
+2. Copy the **Client ID**, generate a **Client secret**, and add them to `.env` with a cookie key:
+
+   ```bash
+   GITHUB_CLIENT_ID=Iv23li...
+   GITHUB_CLIENT_SECRET=...
+   WEB_SESSION_SECRET=$(openssl rand -base64 32)   # paste the generated value
+   ```
+
+   Also add `GITHUB_APP_SLUG`, the last part of the app's **Public link** (`https://github.com/apps/<slug>`).
+   With it, users who haven't installed the app yet go straight to GitHub's "choose repositories" page
+   after authorizing. The App ID and private key aren't needed.
+3. Restart `./run.sh`, open <http://localhost:3000> and click **Connect GitHub**.
+
+How the token is handled: the web server keeps each user's token in an encrypted, httpOnly cookie and
+sends it to the service only for GitHub agent requests (`X-GitHub-Token` header). The service passes it
+to the GitHub tools as LangGraph run context, so it is never written to checkpoints, thread metadata or
+traces. Tokens refresh automatically, and **Disconnect** revokes the authorization on GitHub. The sidebar's
+GitHub menu also has **Choose repositories** to change which repos the app can reach.
+
+Private repositories are only visible once the app is *installed* on them. Authorizing alone gives access
+to your identity and public data, so a private repo returns 404 until it's selected in the install step.
+
 ## Configuration
+
+The settings below are for using the agent without the web UI (API or Streamlit), with one shared token.
 
 To enable the GitHub MCP Agent, you need to configure the following environment variables:
 
 ### Required Settings
 
 ```bash
-# GitHub Personal Access Token (required for GitHub MCP server)
-# If not set, the GitHub MCP agent will have no tools
+# GitHub Personal Access Token (fallback when a request carries no user token)
 GITHUB_PAT=your_github_personal_access_token_here
 ```
 

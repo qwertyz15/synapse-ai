@@ -27,6 +27,7 @@ export type AssistantTurn = {
   status: "streaming" | "done" | "error" | "stopped";
   runId?: string;
   error?: string;
+  errorCode?: string;
 };
 export type Turn = UserTurn | AssistantTurn;
 
@@ -34,7 +35,7 @@ export type ChatAction =
   | { type: "user"; text: string }
   | { type: "event"; event: StreamEvent }
   | { type: "stopped" }
-  | { type: "failed"; error: string }
+  | { type: "failed"; error: string; code?: string }
   | { type: "reset"; turns: Turn[] };
 
 const TRANSFER_TO = "transfer_to_";
@@ -150,7 +151,10 @@ export function chatReducer(turns: Turn[], action: ChatAction): Turn[] {
       if (turn.status !== "streaming") return turns;
       settle(turn.blocks, "error");
       turn.status = action.type === "stopped" ? "stopped" : "error";
-      if (action.type === "failed") turn.error = action.error;
+      if (action.type === "failed") {
+        turn.error = action.error;
+        turn.errorCode = action.code;
+      }
       return next;
     }
     case "event": {

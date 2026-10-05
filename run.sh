@@ -44,10 +44,21 @@ until curl -sf "http://localhost:$PORT/health" >/dev/null; do
     sleep 1
 done
 
-AUTH_SECRET="$(grep -E '^AUTH_SECRET=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
-AUTH_SECRET="${AUTH_SECRET%[\"\']}"
-AUTH_SECRET="${AUTH_SECRET#[\"\']}"
-(cd frontend && AGENT_URL="http://localhost:$PORT" AUTH_SECRET="$AUTH_SECRET" npm run dev -- --port "$WEB_PORT") &
+env_value() {
+    local value
+    value="$(grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+    value="${value%[\"\']}"
+    printf '%s' "${value#[\"\']}"
+}
+
+(
+    cd frontend
+    export AGENT_URL="http://localhost:$PORT"
+    for key in AUTH_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET GITHUB_APP_SLUG WEB_SESSION_SECRET; do
+        export "$key=$(cd .. && env_value "$key")"
+    done
+    npm run dev -- --port "$WEB_PORT"
+) &
 
 if $STREAMLIT; then
     uv run streamlit run src/streamlit_app.py --server.headless true &

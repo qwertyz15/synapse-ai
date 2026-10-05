@@ -4,6 +4,7 @@ import { AlertCircleIcon, CheckIcon, CopyIcon, RotateCcwIcon, ThumbsDownIcon, Th
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
+import { GithubConnectCard } from "@/components/github-connect";
 import { IconButton } from "@/components/icon-button";
 import { Button } from "@/components/ui/button";
 import { sendFeedback } from "@/lib/api";
@@ -36,16 +37,20 @@ export const AssistantMessage = memo(function AssistantMessage({
     <div className="group/turn">
       {empty && streaming ? <ThinkingDots /> : <Blocks blocks={turn.blocks} streaming={streaming} />}
 
-      {turn.status === "error" && (
-        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          <AlertCircleIcon className="size-4 shrink-0" />
-          <span className="min-w-0 flex-1">{friendlyError(turn.error)}</span>
-          {isLast && onRetry && (
-            <Button size="sm" variant="outline" onClick={onRetry}>
-              <RotateCcwIcon /> Retry
-            </Button>
-          )}
-        </div>
+      {turn.status === "error" && turn.errorCode === "github_not_connected" ? (
+        <GithubConnectCard compact />
+      ) : (
+        turn.status === "error" && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <AlertCircleIcon className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1">{friendlyError(turn.error)}</span>
+            {isLast && onRetry && (
+              <Button size="sm" variant="outline" onClick={onRetry}>
+                <RotateCcwIcon /> Retry
+              </Button>
+            )}
+          </div>
+        )
       )}
       {turn.status === "stopped" && <p className="mt-2 text-xs text-muted-foreground">Stopped</p>}
       {empty && turn.status === "done" && <p className="text-sm text-muted-foreground">No response.</p>}

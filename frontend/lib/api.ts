@@ -7,21 +7,26 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
   }
 }
 
+async function toApiError(res: Response): Promise<ApiError> {
+  let detail = res.statusText;
+  let code: string | undefined;
+  try {
+    const body = await res.json();
+    detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
+    code = typeof body.code === "string" ? body.code : undefined;
+  } catch {}
+  return new ApiError(detail || `Request failed (${res.status})`, res.status, code);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}/${path}`, init);
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      const body = await res.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
-    } catch {}
-    throw new ApiError(detail || `Request failed (${res.status})`, res.status);
-  }
+  if (!res.ok) throw await toApiError(res);
   return res.json();
 }
 
@@ -71,16 +76,32 @@ export async function* streamChat(
     ...json({ ...body, stream_tokens: true }),
     signal,
   });
-  if (!res.ok || !res.body) {
-    let detail = `Request failed (${res.status})`;
-    try {
-      const b = await res.json();
-      if (b.detail) detail = typeof b.detail === "string" ? b.detail : JSON.stringify(b.detail);
-    } catch {}
-    throw new ApiError(detail, res.status);
-  }
+  if (!res.ok || !res.body) throw await toApiError(res);
   yield* readEvents(res.body);
 }
+
+export type GithubStatus = {
+  configured: boolean;
+  connected: boolean;
+  login: string | null;
+  avatar_url: string | null;
+  installed?: boolean | null;
+  manage_url?: string;
+};
+
+export async function getGithubStatus(): Promise<GithubStatus> {
+  const res = await fetch("/api/github/status", { cache: "no-store" });
+  if (!res.ok) throw await toApiError(res);
+  return res.json();
+}
+
+export async function disconnectGithub(): Promise<void> {
+  const res = await fetch("/api/github/disconnect", { method: "POST" });
+  if (!res.ok) throw await toApiError(res);
+}
+
+export const githubLoginUrl = (returnTo: string) => `/api/github/login?returnTo=${encodeURIComponent(returnTo)}`;
+export const githubInstallUrl = (returnTo: string) => `/api/github/install?returnTo=${encodeURIComponent(returnTo)}`;
 
 export function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();

@@ -73,6 +73,10 @@ services:
     environment:
       - AGENT_URL=http://agent_service:8080
       - AUTH_SECRET=${AUTH_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GITHUB_APP_SLUG=${GITHUB_APP_SLUG:-}
+      - WEB_SESSION_SECRET=${WEB_SESSION_SECRET:-}
     develop:
       watch:
         - path: frontend/

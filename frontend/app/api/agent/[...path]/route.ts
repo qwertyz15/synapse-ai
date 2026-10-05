@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { USER_COOKIE } from "@/lib/constants";
+import { GITHUB_AGENT, USER_COOKIE } from "@/lib/constants";
+import { clearSession, resolveSession, writeSession, type GithubSession } from "@/lib/server/github-session";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,20 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   const headers = new Headers();
   if (process.env.AUTH_SECRET) headers.set("Authorization", `Bearer ${process.env.AUTH_SECRET}`);
 
+  let github: { session: GithubSession | null; updated: boolean; cleared: boolean } | null = null;
+  if (route.userId === "body" && segments[0] === GITHUB_AGENT) {
+    github = await resolveSession(req);
+    if (!github.session) {
+      const res = NextResponse.json(
+        { detail: "Connect your GitHub account to use this agent.", code: "github_not_connected" },
+        { status: 401 },
+      );
+      if (github.cleared) clearSession(res, req);
+      return res;
+    }
+    headers.set("X-GitHub-Token", github.session.accessToken);
+  }
+
   let body: BodyInit | undefined;
   if (req.method === "POST") {
     const contentType = req.headers.get("content-type") ?? "";
@@ -63,6 +78,7 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
       "X-Accel-Buffering": "no",
     },
   });
+  if (github?.session && github.updated) writeSession(res, req, github.session);
   if (!existingUid) {
     res.cookies.set(USER_COOKIE, uid, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 400 });
   }

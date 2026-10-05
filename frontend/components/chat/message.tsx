@@ -9,7 +9,7 @@ import {
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { GithubConnectCard } from "@/components/github-connect";
@@ -54,12 +54,12 @@ export const AssistantMessage = memo(function AssistantMessage({
   return (
     <div className="group/turn">
       {empty && streaming ? (
-        <ThinkingDots />
+        <ThinkingIndicator />
       ) : (
-        <>
+        <div className={cn(streaming && "animate-in duration-300 fade-in motion-reduce:animate-none")}>
           {work.length > 0 && <Work blocks={work} streaming={streaming && answer.length === 0} />}
           <Blocks blocks={answer} streaming={streaming} />
-        </>
+        </div>
       )}
 
       {turn.status === "error" && turn.errorCode === "github_not_connected" ? (
@@ -92,16 +92,35 @@ function friendlyError(error?: string) {
   return error;
 }
 
-function ThinkingDots() {
+const THINKING_LABELS = [
+  { after: 0, text: "Thinking…" },
+  { after: 8_000, text: "Still thinking…" },
+  { after: 25_000, text: "Taking longer than usual…" },
+];
+
+function ThinkingIndicator() {
+  const [stage, setStage] = useState(0);
+  useEffect(() => {
+    const timers = THINKING_LABELS.slice(1).map(({ after }, i) => setTimeout(() => setStage(i + 1), after));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   return (
-    <div className="flex h-7 items-center gap-1" aria-label="Thinking">
-      {[0, 150, 300].map((delay) => (
-        <span
-          key={delay}
-          className="size-2 animate-bounce rounded-full bg-muted-foreground/60"
-          style={{ animationDelay: `${delay}ms` }}
-        />
-      ))}
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex h-7 min-w-0 animate-in items-center gap-2.5 text-muted-foreground duration-200 fade-in motion-reduce:animate-none"
+    >
+      <span className="flex shrink-0 items-center gap-1" aria-hidden>
+        {[0, 160, 320].map((delay) => (
+          <span
+            key={delay}
+            className="typing-dot size-1.5 rounded-full bg-current"
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
+      </span>
+      <span className="truncate text-sm">{THINKING_LABELS[stage].text}</span>
     </div>
   );
 }

@@ -83,6 +83,36 @@ describe("chatReducer", () => {
     expect(tasks.length).toBeGreaterThan(0);
   });
 
+  it("opens one placeholder turn on send that fills with the response", () => {
+    let turns: Turn[] = chatReducer([], { type: "user", text: "q" });
+    turns = chatReducer(turns, { type: "start" });
+    expect(chatReducer(turns, { type: "start" })).toBe(turns);
+    expect(turns[1]).toMatchObject({ role: "assistant", status: "streaming", blocks: [] });
+
+    turns = chatReducer(turns, { type: "event", event: { type: "token", content: "hi" } });
+    expect(turns).toHaveLength(2);
+    expect((turns[1] as AssistantTurn).blocks).toEqual([{ kind: "text", text: "hi", draft: true }]);
+  });
+
+  it("settles the placeholder when the request fails before any response", () => {
+    let turns: Turn[] = chatReducer([], { type: "user", text: "q" });
+    turns = chatReducer(turns, { type: "start" });
+    turns = chatReducer(turns, { type: "failed", error: "Service unavailable" });
+    expect(turns).toHaveLength(2);
+    expect(turns[1]).toMatchObject({ status: "error", error: "Service unavailable", blocks: [] });
+  });
+
+  it("keeps the placeholder last when the stream echoes a human message", () => {
+    let turns: Turn[] = chatReducer([], { type: "user", text: "q" });
+    turns = chatReducer(turns, { type: "start" });
+    turns = chatReducer(turns, {
+      type: "event",
+      event: { type: "message", content: { type: "human", content: "q2" } },
+    });
+    expect(turns.map((t) => t.role)).toEqual(["user", "user", "assistant"]);
+    expect(turns[2]).toMatchObject({ status: "streaming", blocks: [] });
+  });
+
   it("marks pending tools as failed when stopped", () => {
     let turns: Turn[] = chatReducer([], { type: "user", text: "q" });
     const msg: ChatMessage = { type: "ai", content: "", tool_calls: [{ name: "Calculator", args: {}, id: "c1" }] };

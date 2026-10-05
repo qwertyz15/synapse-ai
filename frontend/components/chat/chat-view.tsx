@@ -48,6 +48,7 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
       if (abortRef.current) return;
       const attachments = unsent.map((a) => a.name);
       dispatch({ type: "user", text, attachments: attachments.length ? attachments : undefined });
+      dispatch({ type: "start" });
       markSent(attachments);
       stickRef.current = true;
       if (!urlSetRef.current) {

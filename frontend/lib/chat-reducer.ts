@@ -33,6 +33,7 @@ export type Turn = UserTurn | AssistantTurn;
 
 export type ChatAction =
   | { type: "user"; text: string; attachments?: string[] }
+  | { type: "start" }
   | { type: "event"; event: StreamEvent }
   | { type: "stopped" }
   | { type: "failed"; error: string; code?: string }
@@ -129,13 +130,18 @@ function applyMessage(turn: AssistantTurn, msg: ChatMessage) {
   }
 }
 
+const newAssistant = (): AssistantTurn => ({ id: nextId(), role: "assistant", blocks: [], status: "streaming" });
+
+const isAwaiting = (turn: Turn | undefined): turn is AssistantTurn =>
+  turn?.role === "assistant" && turn.status === "streaming" && turn.blocks.length === 0;
+
 function currentAssistant(turns: Turn[]): [Turn[], AssistantTurn] {
   const last = turns[turns.length - 1];
   if (last?.role === "assistant") {
     const copy = structuredClone(last);
     return [[...turns.slice(0, -1), copy], copy];
   }
-  const turn: AssistantTurn = { id: nextId(), role: "assistant", blocks: [], status: "streaming" };
+  const turn = newAssistant();
   return [[...turns, turn], turn];
 }
 
@@ -145,6 +151,11 @@ export function chatReducer(turns: Turn[], action: ChatAction): Turn[] {
       return action.turns;
     case "user":
       return [...turns, { id: nextId(), role: "user", text: action.text, attachments: action.attachments }];
+    case "start": {
+      const last = turns[turns.length - 1];
+      if (last?.role === "assistant" && last.status === "streaming") return turns;
+      return [...turns, newAssistant()];
+    }
     case "stopped":
     case "failed": {
       const [next, turn] = currentAssistant(turns);
@@ -160,7 +171,13 @@ export function chatReducer(turns: Turn[], action: ChatAction): Turn[] {
     case "event": {
       const { event } = action;
       if (event.type === "message" && event.content.type === "human") {
-        return chatReducer(turns, { type: "user", text: event.content.content });
+        // Keep the placeholder turn after the echoed message so the indicator stays last.
+        const awaiting = isAwaiting(turns[turns.length - 1]);
+        const withUser = chatReducer(awaiting ? turns.slice(0, -1) : turns, {
+          type: "user",
+          text: event.content.content,
+        });
+        return awaiting ? [...withUser, newAssistant()] : withUser;
       }
       const [next, turn] = currentAssistant(turns);
       if (event.type === "token") {

@@ -5,10 +5,19 @@ import {
   CalculatorIcon,
   CheckIcon,
   ChevronRightIcon,
+  CircleDotIcon,
   CloudSunIcon,
+  FileCodeIcon,
   FileSearchIcon,
+  FolderGit2Icon,
+  GitBranchIcon,
+  GitCommitHorizontalIcon,
+  GitPullRequestIcon,
   GlobeIcon,
+  ListChecksIcon,
   Loader2Icon,
+  SearchCodeIcon,
+  UserIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
@@ -16,15 +25,33 @@ import { useState } from "react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Block, SubAgentBlock, TaskBlock, ToolBlock } from "@/lib/chat-reducer";
+import { summarizeWork, toolLabel } from "@/lib/steps";
 import { cn } from "@/lib/utils";
 
 import { Markdown } from "./markdown";
 
-const TOOLS: Record<string, { icon: React.ElementType; running: string; done: string; arg?: string }> = {
-  DocumentSearch: { icon: FileSearchIcon, running: "Searching documents", done: "Searched documents", arg: "query" },
-  WebSearch: { icon: GlobeIcon, running: "Searching the web", done: "Searched the web", arg: "query" },
-  Calculator: { icon: CalculatorIcon, running: "Calculating", done: "Calculated", arg: "expression" },
-  Weather: { icon: CloudSunIcon, running: "Checking the weather", done: "Checked the weather", arg: "location" },
+const ICONS: Record<string, React.ElementType> = {
+  DocumentSearch: FileSearchIcon,
+  WebSearch: GlobeIcon,
+  Calculator: CalculatorIcon,
+  Weather: CloudSunIcon,
+  search_repositories: FolderGit2Icon,
+  search_code: SearchCodeIcon,
+  get_file_contents: FileCodeIcon,
+  list_commits: GitCommitHorizontalIcon,
+  get_commit: GitCommitHorizontalIcon,
+  list_branches: GitBranchIcon,
+  list_issues: CircleDotIcon,
+  search_issues: CircleDotIcon,
+  issue_read: CircleDotIcon,
+  get_issue: CircleDotIcon,
+  create_issue: CircleDotIcon,
+  list_pull_requests: GitPullRequestIcon,
+  search_pull_requests: GitPullRequestIcon,
+  pull_request_read: GitPullRequestIcon,
+  get_pull_request: GitPullRequestIcon,
+  create_pull_request: GitPullRequestIcon,
+  get_me: UserIcon,
 };
 
 const humanize = (name: string) => {
@@ -32,13 +59,19 @@ const humanize = (name: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-export function Blocks({ blocks, streaming }: { blocks: Block[]; streaming: boolean }) {
+export function Blocks({ blocks, streaming, muted = false }: { blocks: Block[]; streaming: boolean; muted?: boolean }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className={cn("flex flex-col", muted ? "gap-1.5" : "gap-3")}>
       {blocks.map((b, i) => {
         switch (b.kind) {
           case "text":
-            return <Markdown key={i} text={b.text} />;
+            return muted ? (
+              <div key={i} className="text-sm text-muted-foreground">
+                <Markdown text={b.text} />
+              </div>
+            ) : (
+              <Markdown key={i} text={b.text} />
+            );
           case "tool":
             return <ToolStep key={b.id} tool={b} />;
           case "task":
@@ -53,7 +86,8 @@ export function Blocks({ blocks, streaming }: { blocks: Block[]; streaming: bool
 
 function StatusIcon({ status }: { status: "pending" | "success" | "error" }) {
   if (status === "pending") return <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" />;
-  if (status === "error") return <XIcon className="size-3.5 text-destructive" />;
+  // Muted on purpose: the assistant usually recovers from a failed step, so red reads as alarming.
+  if (status === "error") return <XIcon className="size-3.5 text-muted-foreground/70" />;
   return <CheckIcon className="size-3.5 text-emerald-600 dark:text-emerald-400" />;
 }
 
@@ -65,17 +99,40 @@ function formatValue(value: string): string {
   }
 }
 
+/**
+ * Everything the assistant did before answering, collapsed into one line (like ChatGPT's
+ * "Thought for…"). While it works the line shows the current step; click to see every step.
+ */
+export function Work({ blocks, streaming }: { blocks: Block[]; streaming: boolean }) {
+  const [open, setOpen] = useState(false);
+  const summary = summarizeWork(blocks, streaming);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mb-2 text-sm">
+      <CollapsibleTrigger className="flex w-full max-w-full items-center gap-2 rounded-lg py-1 text-left text-muted-foreground hover:text-foreground">
+        {summary.active ? (
+          <Loader2Icon className="size-4 shrink-0 animate-spin" />
+        ) : (
+          <ListChecksIcon className="size-4 shrink-0" />
+        )}
+        <span className={cn("min-w-0 truncate", summary.active && "animate-pulse")}>{summary.headline}</span>
+        {summary.steps > 1 && <span className="ml-auto shrink-0 text-xs opacity-70">{summary.steps} steps</span>}
+        <ChevronRightIcon
+          className={cn("size-3.5 shrink-0 transition-transform", summary.steps <= 1 && "ml-auto", open && "rotate-90")}
+        />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-1 mb-4 ml-2 border-l-2 pl-4">
+          <Blocks blocks={blocks} streaming={streaming} muted />
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 function ToolStep({ tool }: { tool: ToolBlock }) {
   const [open, setOpen] = useState(false);
-  const meta = TOOLS[tool.name];
-  const Icon = meta?.icon ?? WrenchIcon;
-  const label = meta
-    ? tool.status === "pending"
-      ? meta.running
-      : meta.done
-    : `${tool.status === "pending" ? "Running" : "Ran"} ${humanize(tool.name)}`;
-  const argValue = meta?.arg ? tool.args[meta.arg] : undefined;
-  const summary = typeof argValue === "string" ? argValue : undefined;
+  const Icon = ICONS[tool.name] ?? WrenchIcon;
+  const { label, detail: summary } = toolLabel(tool);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="text-sm">

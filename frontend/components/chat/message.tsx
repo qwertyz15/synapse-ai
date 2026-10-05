@@ -16,10 +16,10 @@ import { GithubConnectCard } from "@/components/github-connect";
 import { IconButton } from "@/components/icon-button";
 import { Button } from "@/components/ui/button";
 import { sendFeedback } from "@/lib/api";
-import { turnText, type AssistantTurn, type UserTurn } from "@/lib/chat-reducer";
+import { splitWork, turnText, type AssistantTurn, type UserTurn } from "@/lib/chat-reducer";
 import { cn } from "@/lib/utils";
 
-import { Blocks } from "./blocks";
+import { Blocks, Work } from "./blocks";
 
 export const UserMessage = memo(function UserMessage({ turn }: { turn: UserTurn }) {
   return (
@@ -49,10 +49,18 @@ export const AssistantMessage = memo(function AssistantMessage({
 }) {
   const streaming = turn.status === "streaming";
   const empty = turn.blocks.length === 0;
+  const { work, answer } = splitWork(turn.blocks);
 
   return (
     <div className="group/turn">
-      {empty && streaming ? <ThinkingDots /> : <Blocks blocks={turn.blocks} streaming={streaming} />}
+      {empty && streaming ? (
+        <ThinkingDots />
+      ) : (
+        <>
+          {work.length > 0 && <Work blocks={work} streaming={streaming && answer.length === 0} />}
+          <Blocks blocks={answer} streaming={streaming} />
+        </>
+      )}
 
       {turn.status === "error" && turn.errorCode === "github_not_connected" ? (
         <GithubConnectCard compact />

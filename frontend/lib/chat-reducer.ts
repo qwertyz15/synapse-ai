@@ -208,8 +208,22 @@ function finishTurn(turns: Turn[]): Turn[] {
   return [...turns.slice(0, -1), copy];
 }
 
+/**
+ * Splits a turn into the work (tool calls, sub-agents, tasks and the notes written between them)
+ * and the answer: the text after the last of those steps.
+ */
+export function splitWork(blocks: Block[]): { work: Block[]; answer: Block[] } {
+  let last = -1;
+  blocks.forEach((b, i) => {
+    if (b.kind !== "text") last = i;
+  });
+  return { work: blocks.slice(0, last + 1), answer: blocks.slice(last + 1) };
+}
+
+/** The answer's text (what Copy copies); falls back to every text if there is no answer yet. */
 export function turnText(turn: AssistantTurn): string {
   const collect = (blocks: Block[]): string[] =>
     blocks.flatMap((b) => (b.kind === "text" ? [b.text] : b.kind === "subagent" ? collect(b.blocks) : []));
-  return collect(turn.blocks).join("\n\n");
+  const { answer } = splitWork(turn.blocks);
+  return collect(answer.length ? answer : turn.blocks).join("\n\n");
 }

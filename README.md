@@ -152,6 +152,9 @@ flowchart LR
 - **GitHub tokens** are kept in an encrypted, httpOnly cookie. They're sent to the service only for
   chats with the GitHub connector on, and passed to the GitHub tools as run context, which is never
   saved with the conversation.
+- **Uploads are indexed in the background** when `REDIS_URL` is set (Docker does this): the file is
+  saved, a job is queued in Redis, and a Celery worker indexes it while the Library shows its
+  progress. Without Redis, uploads are indexed during the request.
 - **Documents** are parsed (pypdf, docx2txt), cleaned, split into ~2,000-character chunks and
   embedded into Qdrant, with vectors and payload kept on disk. The shared library lives in the `rag_documents` collection, each user's
   own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
@@ -208,11 +211,15 @@ cp .env.example .env    # add API keys, AUTH_SECRET and POSTGRES_PASSWORD (opens
 docker compose watch
 ```
 
-This starts PostgreSQL, the agent service (port 8080), the web UI (<http://localhost:3000>) and the
-Streamlit app (<http://localhost:8501>), and rebuilds or syncs them when you change code. The agent
-service, Streamlit and PostgreSQL are only reachable from this machine, and Compose won't start
-without `AUTH_SECRET` and `POSTGRES_PASSWORD`. In Docker, chats and the app database are always stored in
-the PostgreSQL container's volume, whatever `DATABASE_TYPE` says, so they survive rebuilds. After
+This starts PostgreSQL, Qdrant, Redis, the agent service (port 8080), a background indexing worker,
+the web UI (<http://localhost:3000>) and the Streamlit app (<http://localhost:8501>), and rebuilds or
+syncs them when you change code. The agent service, Streamlit and PostgreSQL are only reachable from
+this machine, and Compose won't start without `AUTH_SECRET` and `POSTGRES_PASSWORD`. In Docker, chats
+and the app database are always stored in the PostgreSQL container's volume, whatever
+`DATABASE_TYPE` or `APP_DATABASE_URL` say, so they survive rebuilds and the worker sees them.
+
+Memory is capped per container: Qdrant `QDRANT_MEMORY_LIMIT` (512 MB), Redis 128 MB and the worker
+`WORKER_MEMORY_LIMIT` (1 GB); see [background indexing](docs/RAG_Assistant.md#background-indexing). After
 changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `docker compose up --build`.
 
 ## API and Python client

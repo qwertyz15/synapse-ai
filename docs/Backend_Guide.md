@@ -69,6 +69,8 @@ When you send a message in the web UI:
 | `chunking.py` | Splits text into ~2,000-character chunks with 500 overlap and attaches metadata (file, page, hash). |
 | `vectors.py` | `VectorStore`: one Qdrant collection (server via `QDRANT_URL`, or embedded in `QDRANT_PATH`), on-disk vectors, batched writes, filtered search. |
 | `index.py` | The shared library collection and helpers to replace or re-tag a document's chunks. |
+| `jobs.py` | Runs one upload as a job (queued → indexing → ready/failed), shared by the worker and inline indexing. |
+| `parse_worker.py` | Parses an uploaded file in a separate, time- and memory-limited process. |
 | `attachments.py` | Chat attachments in their own `chat_attachments` collection, tagged with `thread_id` and `user_id`: add, list, delete, delete-all-for-a-chat and scoped search. |
 | `manifest.py` | Which library files are indexed (hash, chunk count, time), in the `library_documents` table. Imports the older `chroma_db/ingestion_manifest.sqlite` once if present. |
 | `changes.py` | Compares files with the manifest to find new, updated, unchanged and deleted ones. |

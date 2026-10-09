@@ -17,6 +17,33 @@ python scripts/migrate_chroma_to_qdrant.py --dry-run   # see what would be copie
 python scripts/migrate_chroma_to_qdrant.py
 ```
 
+## Background indexing
+
+Uploads from the Library and chat attachments become **jobs** (`ingestion_jobs` table): the file is
+saved to `UPLOADS_DIR`, and with `REDIS_URL` set a Celery worker indexes it while the web UI shows
+*Queued → Indexing… → ready* (or the error, with Retry). Without `REDIS_URL` the same code runs
+during the upload request instead, which is fine for `./run.sh` on your own machine.
+
+Only the job id goes through Redis; the job's status lives in the app database. The worker imports
+just the ingestion code (about 150 MB before the embedding client loads) and is kept within a memory
+budget:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `WORKER_CONCURRENCY` | 1 | Jobs a worker runs at once |
+| `WORKER_MAX_TASKS_PER_CHILD` | 50 | Jobs before a worker process is replaced |
+| `WORKER_MAX_MEMORY_MB` | 700 | A process that grew past this is replaced after its job |
+| `JOB_TIME_LIMIT_S` | 600 | Hard time limit per job |
+| `JOB_MAX_RETRIES` | 3 | Retries for rate limits, timeouts and dropped connections (with backoff) |
+| `WORKER_MEMORY_LIMIT` | 1g | Docker memory cap for the worker container |
+
+A job that fails for good (e.g. a file with no readable text) keeps its file so it can be retried
+or removed from the Library. If a worker dies mid-job, Redis hands the job to another worker after
+20 minutes.
+
+To run a worker without Docker, start Redis and Qdrant, set `REDIS_URL` and `QDRANT_URL` in `.env`,
+and run `cd src && celery -A worker worker -Q ingestion`.
+
 ## Choosing an embedding provider
 
 The database is built and searched with the same embedding model, configured in `.env`:

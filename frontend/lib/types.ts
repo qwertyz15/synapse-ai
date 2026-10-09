@@ -89,6 +89,11 @@ export type PlanInfo = {
   daily_limit: number | null;
   /** null means every model */
   models: string[] | null;
+  own_key_providers: string[];
   max_file_mb: number | null;
   library_files: number | null;
 };
+
+export type UserKey = { provider: string; last4: string; added_at: string; verified: boolean };
+
+export type UserKeys = { enabled: boolean; providers: string[]; keys: UserKey[] };

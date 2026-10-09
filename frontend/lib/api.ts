@@ -9,6 +9,8 @@ import type {
   ServiceMetadata,
   StreamEvent,
   ThreadInfo,
+  UserKey,
+  UserKeys,
 } from "./types";
 
 const BASE = "/api/agent";
@@ -50,6 +52,13 @@ export async function getAccount(): Promise<{ enabled: boolean; account: Account
 
 /** The signed-in account's plan and today's usage; null without an account. */
 export const getPlan = () => request<PlanInfo | null>("auth/plan");
+
+export const listKeys = () => request<UserKeys>("auth/keys");
+
+export const saveKey = (provider: string, apiKey: string) =>
+  request<UserKey>(`auth/keys/${provider}`, { ...json({ api_key: apiKey }), method: "PUT" });
+
+export const removeKey = (provider: string) => request<UserKeys>(`auth/keys/${provider}`, { method: "DELETE" });
 
 export async function signOut(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST" });

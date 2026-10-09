@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-import { DELETE, GET, PATCH, POST } from "../[...path]/route";
+import { DELETE, GET, PATCH, POST, PUT } from "../[...path]/route";
 import { SESSION_COOKIE, githubConfig, seal, type GithubSession } from "@/lib/server/github-session";
 
 type Sent = { url: string; headers: Headers; body: Record<string, unknown> };
@@ -179,6 +179,34 @@ it("asks for the plan as the browser's user and never exposes sign-in", async ()
   });
   expect(signIn.status).toBe(404);
   expect(urls).toHaveLength(1);
+});
+
+it("saves personal API keys as the browser's user", async () => {
+  const calls: { url: string; body: string }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), body: new TextDecoder().decode(init?.body as Uint8Array) });
+      return Response.json({ provider: "openai", last4: "1234" });
+    }),
+  );
+  const put = (path: string[]) => {
+    const req = new NextRequest(`http://localhost:3000/api/agent/${path.join("/")}?user_id=spoofed`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ api_key: "sk-1234" }),
+    });
+    req.cookies.set("uid", "browser-1");
+    return PUT(req, { params: Promise.resolve({ path }) });
+  };
+  expect((await put(["auth", "keys", "openai"])).status).toBe(200);
+  const url = new URL(calls[0].url);
+  expect(url.pathname).toBe("/auth/keys/openai");
+  expect(url.searchParams.get("user_id")).toBe("browser-1");
+  expect(JSON.parse(calls[0].body)).toEqual({ api_key: "sk-1234" });
+
+  expect((await put(["auth", "keys", "Open/../ai"])).status).toBe(404);
+  expect(calls).toHaveLength(1);
 });
 
 it("scopes the document library to the browser's user", async () => {

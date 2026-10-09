@@ -18,6 +18,9 @@ type Route = { method: string; pattern: RegExp; userId?: "body" | "query"; limit
 const ROUTES: Route[] = [
   { method: "GET", pattern: /^info$/ },
   { method: "GET", pattern: /^auth\/plan$/, userId: "query" },
+  { method: "GET", pattern: /^auth\/keys$/, userId: "query" },
+  { method: "PUT", pattern: /^auth\/keys\/[a-z]+$/, userId: "query", maxBytes: 4096 },
+  { method: "DELETE", pattern: /^auth\/keys\/[a-z]+$/, userId: "query" },
   { method: "POST", pattern: new RegExp(`^${AGENT}/stream$`), userId: "body", limit: "chat", maxBytes: 256 * 1024 },
   { method: "POST", pattern: new RegExp(`^${AGENT}/history$`), userId: "body" },
   { method: "GET", pattern: new RegExp(`^${AGENT}/threads$`), userId: "query" },
@@ -103,7 +106,7 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   let body: BodyInit | undefined;
   let wantsGithub = false;
   let githubWrite = false;
-  if (req.method === "POST" || req.method === "PATCH") {
+  if (req.method === "POST" || req.method === "PATCH" || req.method === "PUT") {
     const contentType = req.headers.get("content-type") ?? "";
     headers.set("Content-Type", contentType);
     const raw = await readLimited(req, maxBytes);
@@ -159,4 +162,4 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   return res;
 }
 
-export { forward as GET, forward as POST, forward as PATCH, forward as DELETE };
+export { forward as GET, forward as POST, forward as PUT, forward as PATCH, forward as DELETE };

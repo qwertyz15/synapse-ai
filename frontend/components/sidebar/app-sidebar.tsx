@@ -10,6 +10,7 @@ import {
   PanelLeftIcon,
   PencilIcon,
   SearchIcon,
+  SettingsIcon,
   SquarePenIcon,
   SunIcon,
   Trash2Icon,
@@ -292,6 +293,9 @@ function AccountMenu() {
               {plan.daily_limit !== null && ` · ${plan.messages_today} of ${plan.daily_limit} messages today`}
             </span>
           )}
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/settings" />}>
+          <SettingsIcon /> Settings
         </DropdownMenuItem>
         <DropdownMenuItem onClick={leave}>
           <LogOutIcon /> Sign out

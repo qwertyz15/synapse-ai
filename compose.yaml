@@ -19,10 +19,13 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.service
+    # Only the web UI is meant to be reached from outside; the API stays on this machine.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     env_file:
       - .env
+    environment:
+      - HOST=0.0.0.0
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,7 +96,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.app
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     depends_on:
       - agent_service
     healthcheck:

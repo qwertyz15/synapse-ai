@@ -1,3 +1,4 @@
+import ipaddress
 from enum import StrEnum
 from json import loads
 from typing import Annotated, Any
@@ -78,7 +79,7 @@ class Settings(BaseSettings):
     )
     MODE: str | None = None
 
-    HOST: str = "0.0.0.0"
+    HOST: str = "127.0.0.1"
     PORT: int = 8080
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30
     LOG_LEVEL: LogLevel = LogLevel.WARNING
@@ -276,6 +277,14 @@ class Settings(BaseSettings):
 
     def is_dev(self) -> bool:
         return self.MODE == "dev"
+
+    def is_local_only(self) -> bool:
+        if self.HOST == "localhost":
+            return True
+        try:
+            return ipaddress.ip_address(self.HOST).is_loopback
+        except ValueError:
+            return False
 
 
 settings = Settings()

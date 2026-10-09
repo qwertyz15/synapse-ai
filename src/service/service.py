@@ -90,6 +90,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Configurable lifespan that initializes the appropriate database checkpointer, store,
     and agents with async loading - for example for starting up MCP clients.
     """
+    if not settings.AUTH_SECRET:
+        if not settings.is_local_only():
+            raise RuntimeError(
+                f"AUTH_SECRET is required when the service listens on {settings.HOST}. "
+                "Set AUTH_SECRET, or set HOST=127.0.0.1 to keep it local."
+            )
+        logger.warning(
+            "AUTH_SECRET is not configured; the API is unauthenticated but only "
+            f"listening on {settings.HOST}."
+        )
     try:
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
@@ -99,12 +109,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Only setup store for Postgres as InMemoryStore doesn't need setup
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
-
-            if not settings.AUTH_SECRET:
-                logger.warning(
-                    "AUTH_SECRET is not configured — all API endpoints are unauthenticated. "
-                    "Set AUTH_SECRET in your environment to enable bearer token authentication."
-                )
 
             # Configure agents with both memory components and async loading
             agents = get_all_agent_info()

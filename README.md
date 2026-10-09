@@ -115,7 +115,7 @@ likely to set:
 | `DEFAULT_MODEL` | The model new chats use, e.g. `deepseek-v4-flash` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `VOYAGE_API_KEY` | Document search: `openai` (uses `OPENAI_API_KEY`) or `voyage` |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_SLUG`, `WEB_SESSION_SECRET` | Connect GitHub; see [GitHub setup](docs/GitHub_MCP_Agent.md) |
-| `AUTH_SECRET` | Require a bearer token on the agent service API (recommended outside your own machine) |
+| `AUTH_SECRET` | Bearer token for the agent service API; required whenever it listens beyond localhost, including Docker |
 | `OPENWEATHERMAP_API_KEY` | The weather tool |
 | `GROQ_API_KEY` | Content moderation (LlamaGuard safeguard) |
 | `DATABASE_TYPE` | Chat storage: `sqlite` (default, `checkpoints.db`), `postgres` or `mongo` |
@@ -195,12 +195,14 @@ run.sh           start everything locally
 ## Docker
 
 ```sh
-cp .env.example .env    # add your API keys
+cp .env.example .env    # add your API keys and AUTH_SECRET (openssl rand -hex 32)
 docker compose watch
 ```
 
 This starts PostgreSQL, the agent service (port 8080), the web UI (<http://localhost:3000>) and the
-Streamlit app (<http://localhost:8501>), and rebuilds or syncs them when you change code. After
+Streamlit app (<http://localhost:8501>), and rebuilds or syncs them when you change code. The agent
+service and Streamlit are only reachable from this machine, and the service won't start without
+`AUTH_SECRET`. After
 changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `docker compose up --build`.
 
 ## API and Python client

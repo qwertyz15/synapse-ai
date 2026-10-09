@@ -31,7 +31,7 @@ def test_check_str_is_http():
 
 def test_settings_default_values():
     settings = Settings(_env_file=None)
-    assert settings.HOST == "0.0.0.0"
+    assert settings.HOST == "127.0.0.1"
     assert settings.PORT == 8080
     assert settings.USE_AWS_BEDROCK is False
     assert settings.USE_FAKE_MODEL is False
@@ -281,3 +281,17 @@ def test_settings_log_level_invalid():
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key", "LOG_LEVEL": "INVALID"}, clear=True):
         with pytest.raises(ValueError, match="validation error for Settings\nLOG_LEVEL\n"):
             Settings(_env_file=None)
+
+
+@pytest.mark.parametrize(
+    ("host", "local"),
+    [
+        ("127.0.0.1", True),
+        ("localhost", True),
+        ("::1", True),
+        ("0.0.0.0", False),
+        ("10.0.0.5", False),
+    ],
+)
+def test_is_local_only(host, local):
+    assert Settings(HOST=host, _env_file=None).is_local_only() is local

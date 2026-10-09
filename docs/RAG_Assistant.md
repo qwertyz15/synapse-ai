@@ -17,6 +17,28 @@ python scripts/migrate_chroma_to_qdrant.py --dry-run   # see what would be copie
 python scripts/migrate_chroma_to_qdrant.py
 ```
 
+## Hybrid search
+
+Searches combine **meaning** (the embedding of each chunk) and **keywords** (BM25), so a question
+finds both paraphrases ("How much vacation do I get?" → "annual leave") and exact terms such as
+invoice numbers, product codes, names or clause numbers, which embeddings tend to blur inside a
+long chunk.
+
+- Each chunk stores a sparse BM25 vector next to its embedding. It's computed locally from the text
+  (no model, no API call); Qdrant adds the IDF weighting, so words found in many chunks count less.
+- One Qdrant query runs both searches and merges them with `HYBRID_FUSION`: `dbsf` (default,
+  normalized scores, so a clear keyword match wins) or `rrf` (rank positions only).
+- `HYBRID_SEARCH=false` goes back to meaning only.
+- Collections created before hybrid search are rebuilt with keyword vectors the first time they're
+  used, keeping their embeddings, so nothing is re-embedded.
+
+In a test with real embeddings, where each ~1,350-character chunk mentioned one invoice number,
+meaning-only search put the right chunk in the top 5 for 12 of 15 questions; hybrid search did for
+15 of 15, and ranked it first in all 15.
+
+Words are split on anything that isn't a letter, digit or combining mark, so scripts such as Bangla
+or Hindi work; there's no stemming, so "policy" and "policies" only meet through the meaning side.
+
 ## Background indexing
 
 Uploads from the Library and chat attachments become **jobs** (`ingestion_jobs` table): the file is

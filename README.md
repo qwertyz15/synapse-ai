@@ -284,7 +284,9 @@ flowchart LR
   saved, a job is queued in Redis, and a Celery worker indexes it while the Library shows its
   progress. Without Redis, uploads are indexed during the request.
 - **Documents** are parsed (pypdf, docx2txt), cleaned, split into ~2,000-character chunks and
-  embedded into Qdrant, with vectors and payload kept on disk. The shared library lives in the `rag_documents` collection, each user's
+  embedded into Qdrant, with vectors and payload kept on disk. Searches are **hybrid**: by meaning and
+  by keywords (BM25) together, so exact terms like invoice numbers are found too
+  ([details](docs/RAG_Assistant.md#hybrid-search)). The shared library lives in the `rag_documents` collection, each user's
   own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
   (tagged with their chat and user). A search returns the best-matching
   passages, never whole files.

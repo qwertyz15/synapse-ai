@@ -349,6 +349,7 @@ class ChatHistoryInput(BaseModel):
 
 class ChatHistory(BaseModel):
     messages: list[ChatMessage]
+    model: str | None = Field(default=None, description="The model the chat last used.")
 
 
 class UserThreadsInput(BaseModel):
@@ -387,6 +388,7 @@ class ThreadSummary(BaseModel):
         default=None,
         examples=["What is the weather in Tokyo?"],
     )
+    model: str | None = Field(default=None, description="The model the chat last used.")
 
 
 class UserThreads(BaseModel):

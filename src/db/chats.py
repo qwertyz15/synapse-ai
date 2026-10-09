@@ -22,7 +22,12 @@ def make_title(message: str) -> str | None:
 
 
 async def claim_chat(
-    session: AsyncSession, thread_id: str, user_id: str | None, agent_id: str, message: str
+    session: AsyncSession,
+    thread_id: str,
+    user_id: str | None,
+    agent_id: str,
+    message: str,
+    model: str | None = None,
 ) -> Chat:
     """Create the chat on its first message, or bump `updated_at`; refuse someone else's chat.
 
@@ -48,6 +53,8 @@ async def claim_chat(
     if (user_id is not None and chat.user_id != user_id) or chat.agent_id != agent_id:
         raise ChatAccessError(thread_id)
     chat.updated_at = utcnow()
+    if model is not None:
+        chat.model = model
     return chat
 
 

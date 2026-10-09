@@ -204,7 +204,12 @@ async def _claim_thread(user_input: UserInput, agent_id: str) -> None:
         async with async_session_scope() as session:
             is_new = await get_chat(session, user_input.thread_id) is None
             chat = await claim_chat(
-                session, user_input.thread_id, user_input.user_id, agent_id, user_input.message
+                session,
+                user_input.thread_id,
+                user_input.user_id,
+                agent_id,
+                user_input.message,
+                str(user_input.model or settings.DEFAULT_MODEL),
             )
             placeholder = chat.title
         user_input.user_id = chat.user_id
@@ -535,9 +540,9 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
 
     If agent_id is not provided, the default agent will be used.
     """
+    async with async_session_scope() as session:
+        chat = await get_chat(session, input.thread_id)
     if input.user_id is not None:
-        async with async_session_scope() as session:
-            chat = await get_chat(session, input.thread_id)
         if chat is None:
             return ChatHistory(messages=[])
         if chat.user_id != input.user_id:
@@ -558,7 +563,7 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
             # A thread that never existed (or was deleted) has no state values.
             messages = state_snapshot.values.get("messages", [])
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
-        return ChatHistory(messages=chat_messages)
+        return ChatHistory(messages=chat_messages, model=chat.model if chat else None)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
@@ -592,7 +597,11 @@ async def _list_threads(input: UserThreadsInput, agent_id: str | None) -> UserTh
     return UserThreads(
         threads=[
             ThreadSummary(
-                thread_id=c.thread_id, agent_id=c.agent_id, updated_at=c.updated_at, title=c.title
+                thread_id=c.thread_id,
+                agent_id=c.agent_id,
+                updated_at=c.updated_at,
+                title=c.title,
+                model=c.model,
             )
             for c in chats
         ]
@@ -613,6 +622,7 @@ async def rename_thread(
             agent_id=chat.agent_id,
             updated_at=chat.updated_at,
             title=chat.title,
+            model=chat.model,
         )
 
 

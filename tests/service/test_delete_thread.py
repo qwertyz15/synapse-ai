@@ -112,7 +112,7 @@ async def test_history_of_a_deleted_chat_is_empty(client, graph, attachments_db)
     _delete(client, "t1", "u1")
     response = client.post("/research-assistant/history", json={"thread_id": "t1"})
     assert response.status_code == 200
-    assert response.json() == {"messages": []}
+    assert response.json() == {"messages": [], "model": None}
 
 
 async def _claim(thread_id: str, user_id: str):
@@ -135,4 +135,4 @@ async def test_history_is_only_returned_to_the_chat_owner(client, graph, attachm
     unknown = client.post(
         "/research-assistant/history", json={"thread_id": "never-claimed", "user_id": "u1"}
     )
-    assert unknown.json() == {"messages": []}
+    assert unknown.json() == {"messages": [], "model": None}

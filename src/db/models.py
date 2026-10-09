@@ -83,6 +83,8 @@ class Chat(Base):
     user_id: Mapped[str] = mapped_column(String(64))
     agent_id: Mapped[str] = mapped_column(String(64))
     title: Mapped[str | None] = mapped_column(String(200))
+    # The model the chat's latest message used, so reopening the chat picks it again.
+    model: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 

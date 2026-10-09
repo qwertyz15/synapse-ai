@@ -151,6 +151,12 @@ class Settings(BaseSettings):
     # How the two rankings merge: "dbsf" (normalized scores, so a clear keyword match like an
     # invoice number wins) or "rrf" (rank positions only, Qdrant's usual default).
     HYBRID_FUSION: Literal["dbsf", "rrf"] = "dbsf"
+    # Reranking: search gathers RERANK_CANDIDATES passages per source, then a reranker model orders
+    # them by how well they answer the question and the assistant gets the best RERANK_TOP_K.
+    RERANKER: Literal["none", "voyage"] = "none"
+    RERANK_MODEL: str = "rerank-2.5-lite"
+    RERANK_CANDIDATES: int = 20
+    RERANK_TOP_K: int = 6
 
     # Background indexing. With REDIS_URL set, uploads become jobs for the Celery worker; without
     # it they're indexed inline in the request. Uploaded files wait in UPLOADS_DIR until indexed.

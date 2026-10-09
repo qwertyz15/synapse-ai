@@ -6,7 +6,9 @@ from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, tool
 
+from core import settings
 from core.embeddings import get_embeddings
+from ingestion import rerank
 from ingestion.attachments import open_attachment_store, search_attachments
 from ingestion.index import open_vectorstore
 from ingestion.user_library import open_user_library, search_user_library
@@ -60,8 +62,15 @@ def format_contexts(docs):
     return "\n\n".join(format_context(doc) for doc in docs)
 
 
+SEARCH_K = 5
+
+
+def _k() -> int:
+    return settings.RERANK_CANDIDATES if rerank.enabled() else SEARCH_K
+
+
 def _library_documents(query: str) -> list[Document]:
-    return open_vectorstore(get_embeddings()).search(query, 5)
+    return open_vectorstore(get_embeddings()).search(query, _k())
 
 
 def _chat_documents(query: str, config: RunnableConfig | None) -> list[Document]:
@@ -69,14 +78,16 @@ def _chat_documents(query: str, config: RunnableConfig | None) -> list[Document]
     thread_id, user_id = configurable.get("thread_id"), configurable.get("user_id")
     if not thread_id or not user_id:
         return []
-    return search_attachments(open_attachment_store(get_embeddings()), query, thread_id, user_id)
+    return search_attachments(
+        open_attachment_store(get_embeddings()), query, thread_id, user_id, _k()
+    )
 
 
 def _user_library_documents(query: str, config: RunnableConfig | None) -> list[Document]:
     user_id = (config or {}).get("configurable", {}).get("user_id")
     if not user_id:
         return []
-    return search_user_library(open_user_library(get_embeddings()), query, user_id)
+    return search_user_library(open_user_library(get_embeddings()), query, user_id, _k())
 
 
 def database_search_func(query: str, config: RunnableConfig) -> str:
@@ -86,13 +97,17 @@ def database_search_func(query: str, config: RunnableConfig) -> str:
     Use for questions about the user's own files, organization, policies or projects.
     Returns the most relevant passages, each labeled with its source file and page.
     """
-    documents = (
-        _chat_documents(query, config)
-        + _user_library_documents(query, config)
-        + _library_documents(query)
-    )
+    sources = [
+        _chat_documents(query, config),
+        _user_library_documents(query, config),
+        _library_documents(query),
+    ]
+    documents = [doc for found in sources for doc in found]
     if not documents:
         return "No matching passages found in the uploaded documents."
+    if rerank.enabled():
+        ranked = rerank.rerank(query, documents, settings.RERANK_TOP_K)
+        documents = ranked or [doc for found in sources for doc in found[:SEARCH_K]]
     return format_contexts(documents)
 
 

@@ -1,9 +1,51 @@
-# 🧠 AI Agent Toolkit
+<div align="center">
 
-A ChatGPT-style AI assistant you run yourself. Chat with a research assistant that combines
-**your documents**, **web search**, a **calculator** and **your GitHub repositories** in one answer,
-built with [LangGraph](https://langchain-ai.github.io/langgraph/), [FastAPI](https://fastapi.tiangolo.com/)
-and a [Next.js](https://nextjs.org/) web UI.
+<img src="frontend/app/icon.svg" alt="Synapse logo" width="88" />
+
+# Synapse
+
+**A self-hosted ChatGPT alternative that answers from your documents, the web and your
+GitHub repositories.**
+
+Built on [LangGraph](https://langchain-ai.github.io/langgraph/) agents, a [FastAPI](https://fastapi.tiangolo.com/)
+service and a [Next.js](https://nextjs.org/) web UI. Works with DeepSeek, OpenAI, Anthropic, Google,
+Ollama and other model providers.
+
+![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
+![Node.js 20.9+](https://img.shields.io/badge/node.js-20.9%2B-5FA04E?logo=nodedotjs&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-agents-1C3C3C)
+![FastAPI](https://img.shields.io/badge/FastAPI-service-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-web%20UI-000000?logo=nextdotjs&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-GitHub%20connector-6E40C9)
+
+[Quickstart](#quickstart) · [Features](#features) · [How it works](#how-it-works) ·
+[Configuration](#configuration) · [API](#api-and-python-client)
+
+</div>
+
+![Synapse web UI: chat with a research assistant that searches your documents and the web](media/screenshot.png)
+
+## What is Synapse?
+
+Synapse is an AI assistant you run on your own machine or server. You chat with it like ChatGPT, but
+it can also look things up: it searches documents you upload (retrieval-augmented generation, or RAG),
+searches the web, does exact calculations, checks the weather, and reads or changes your GitHub
+repositories through the Model Context Protocol (MCP). It decides which tools a question needs,
+shows each step as it works, and cites the pages it used.
+
+Everything runs under your control: your documents are indexed into a local ChromaDB, chats are
+stored in SQLite, Postgres or MongoDB, and API keys and GitHub tokens never reach the browser. You
+choose the model, from hosted APIs to local models served by Ollama, vLLM or SGLang.
+
+### What you can use it for
+
+- **Ask questions about your own files**: policies, handbooks, contracts, research papers or
+  manuals (PDF, Word, Markdown, text), with answers that cite the pages they came from.
+- **Research with live data**: combine web search, your documents and a calculator in one answer.
+- **Work with GitHub in plain language**: "What changed in owner/repo this week?", "Summarize the
+  open issues labeled bug", or, if you allow it, open issues and pull requests.
+- **Build your own agents**: add a LangGraph agent in Python and it gets a streaming API, chat
+  history and a place in the web UI automatically.
 
 ## Features
 

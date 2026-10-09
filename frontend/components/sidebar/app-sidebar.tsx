@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useApp } from "@/components/app-provider";
 import { GithubSidebarItem } from "@/components/github-connect";
 import { IconButton } from "@/components/icon-button";
+import { SynapseLogo } from "@/components/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -129,7 +130,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-2 pt-2">
         <Link href="/" onClick={onNavigate} className="flex items-center gap-2 px-2 text-sm font-semibold">
-          <span className="text-lg">🧠</span> Agent Toolkit
+          <SynapseLogo className="size-5 shrink-0" /> Synapse
         </Link>
         <IconButton
           label="Close sidebar"

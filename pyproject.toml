@@ -1,7 +1,7 @@
 [project]
 name = "agent-service-toolkit"
 version = "0.1.0"
-description = "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
+description = "Synapse: a self-hosted AI assistant over your documents, the web and GitHub, built with LangGraph, FastAPI and Next.js"
 readme = "README.md"
 authors = [{ name = "Fahim Shahriar", email = "imnirobs15@gmail.com" }]
 classifiers = [

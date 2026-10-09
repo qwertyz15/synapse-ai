@@ -24,7 +24,7 @@ from voice import VoiceManager
 # The app heavily uses AgentClient to interact with the agent's FastAPI endpoints.
 
 
-APP_TITLE = "Agent Service Toolkit"
+APP_TITLE = "Synapse"
 APP_ICON = "🧠"
 USER_ID_COOKIE = "user_id"
 

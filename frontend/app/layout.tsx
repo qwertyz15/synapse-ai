@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Agent Toolkit",
+  title: "Synapse",
   description: "Chat with LangGraph agents over your documents and the web",
 };
 

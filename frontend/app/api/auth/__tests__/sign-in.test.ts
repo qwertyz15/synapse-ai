@@ -100,6 +100,12 @@ describe("Google sign-in", () => {
     expect(google.searchParams.get("state")).toBeTruthy();
   });
 
+  it("falls back to this site's callback when GOOGLE_REDIRECT_URI is empty", async () => {
+    vi.stubEnv("GOOGLE_REDIRECT_URI", "");
+    const { google } = await startLogin();
+    expect(google.searchParams.get("redirect_uri")).toBe(`${ORIGIN}/api/auth/callback`);
+  });
+
   it("signs in, hands over the anonymous id and returns to the page", async () => {
     const calls = mockGoogle();
     const { google, cookie } = await startLogin();

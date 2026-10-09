@@ -71,7 +71,7 @@ export function clearSignInState(res: NextResponse, req: NextRequest) {
 }
 
 export function googleRedirectUri(req: NextRequest): string {
-  return process.env.GOOGLE_REDIRECT_URI ?? new URL("/api/auth/callback", req.nextUrl.origin).toString();
+  return process.env.GOOGLE_REDIRECT_URI || new URL("/api/auth/callback", req.nextUrl.origin).toString();
 }
 
 export function googleAuthorizeUrl(config: GoogleConfig, req: NextRequest, state: SignInState): string {

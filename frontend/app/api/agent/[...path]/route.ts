@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { GITHUB_AGENT, USER_COOKIE } from "@/lib/constants";
 import { clearSession, resolveSession, writeSession, type GithubSession } from "@/lib/server/github-session";
+import { authEnabled, readAccount } from "@/lib/server/account";
 import { RateLimiter, clientIp, limitsFor, type Kind, type Limit } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +66,12 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   if (!route) return NextResponse.json({ detail: "Not found" }, { status: 404 });
 
   const existingUid = req.cookies.get(USER_COOKIE)?.value;
-  const uid = existingUid ?? crypto.randomUUID();
+  let uid = existingUid ?? crypto.randomUUID();
+  if (authEnabled()) {
+    const account = readAccount(req);
+    if (!account) return NextResponse.json({ detail: "Sign in to continue.", code: "auth_required" }, { status: 401 });
+    uid = account.id;
+  }
 
   const maxBytes = route.maxBytes ?? DEFAULT_MAX_BYTES;
   if (Number(req.headers.get("content-length") ?? 0) > maxBytes) return tooLarge();
@@ -146,7 +152,7 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
     },
   });
   if (github?.session && github.updated) writeSession(res, req, github.session);
-  if (!existingUid) {
+  if (!existingUid && !authEnabled()) {
     res.cookies.set(USER_COOKIE, uid, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 400 });
   }
   return res;

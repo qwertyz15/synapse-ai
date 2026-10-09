@@ -4,7 +4,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { toast } from "sonner";
 
 import { isVisibleAgent } from "@/lib/agents";
-import { disconnectGithub, getAllThreads, getGithubStatus, getInfo, type GithubStatus } from "@/lib/api";
+import {
+  disconnectGithub,
+  getAccount,
+  getAllThreads,
+  getGithubStatus,
+  getInfo,
+  type Account,
+  type GithubStatus,
+} from "@/lib/api";
 import type { ServiceMetadata, ThreadInfo } from "@/lib/types";
 
 type AppState = {
@@ -25,6 +33,8 @@ type AppState = {
   disconnectGithub: () => Promise<void>;
   githubWrite: boolean;
   setGithubWrite: (on: boolean) => void;
+  /** The signed-in user when sign-in is on; null when it's off or still loading. */
+  account: Account | null;
 };
 
 const GITHUB_ERRORS: Record<string, string> = {
@@ -65,6 +75,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [github, setGithub] = useState<GithubStatus | null>(null);
   const [githubWrite, setGithubWriteState] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
+
+  useEffect(() => {
+    getAccount()
+      .then((me) => setAccount(me.account))
+      .catch(() => setAccount(null));
+  }, []);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- restoring per-browser preferences after hydration */
@@ -175,6 +192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       disconnectGithub: disconnect,
       githubWrite,
       setGithubWrite,
+      account,
     }),
     [
       info,
@@ -189,6 +207,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       disconnect,
       githubWrite,
       setGithubWrite,
+      account,
     ],
   );
 

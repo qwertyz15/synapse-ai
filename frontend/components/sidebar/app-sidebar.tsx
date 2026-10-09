@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  ChevronUpIcon,
   EllipsisIcon,
   LibraryIcon,
+  LogOutIcon,
   MonitorIcon,
   MoonIcon,
   PanelLeftIcon,
@@ -43,7 +45,7 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { agentLabel } from "@/lib/agents";
-import { deleteThread, renameThread } from "@/lib/api";
+import { deleteThread, renameThread, signOut } from "@/lib/api";
 import type { ThreadInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -222,6 +224,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t border-sidebar-border p-2">
         <GithubSidebarItem />
         <ThemeMenu />
+        <AccountMenu />
       </div>
     </div>
   );
@@ -252,6 +255,42 @@ function NavLink({
       {icon}
       {children}
     </Link>
+  );
+}
+
+function AccountMenu() {
+  const { account } = useApp();
+  const router = useRouter();
+  if (!account) return null;
+  const label = account.name || account.email;
+  const leave = async () => {
+    await signOut();
+    router.replace("/login");
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-sm hover:bg-sidebar-accent">
+        {account.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- tiny remote avatar; next/image would need remotePatterns
+          <img src={account.avatar_url} alt="" referrerPolicy="no-referrer" className="size-5 rounded-full" />
+        ) : (
+          <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium uppercase">
+            {label.charAt(0)}
+          </span>
+        )}
+        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+        <ChevronUpIcon className="size-3.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" className="w-60">
+        <DropdownMenuItem disabled className="flex-col items-start gap-0 opacity-100">
+          <span className="truncate text-sm">{account.email}</span>
+          {account.is_admin && <span className="text-xs text-muted-foreground">Admin</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={leave}>
+          <LogOutIcon /> Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

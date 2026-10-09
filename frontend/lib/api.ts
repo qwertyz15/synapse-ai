@@ -30,7 +30,25 @@ async function toApiError(res: Response): Promise<ApiError> {
     detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
     code = typeof body.code === "string" ? body.code : undefined;
   } catch {}
+  if (code === "auth_required" && typeof window !== "undefined") {
+    const here = `${window.location.pathname}${window.location.search}`;
+    // A full load (not the router) so no signed-out state survives; this module has no router anyway.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(`/login?returnTo=${encodeURIComponent(here)}`);
+  }
   return new ApiError(detail || `Request failed (${res.status})`, res.status, code);
+}
+
+export type Account = { email: string; name: string | null; avatar_url: string | null; is_admin: boolean };
+
+export async function getAccount(): Promise<{ enabled: boolean; account: Account | null }> {
+  const res = await fetch("/api/auth/me", { cache: "no-store" });
+  if (!res.ok) throw await toApiError(res);
+  return res.json();
+}
+
+export async function signOut(): Promise<void> {
+  await fetch("/api/auth/logout", { method: "POST" });
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

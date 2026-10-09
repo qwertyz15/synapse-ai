@@ -140,6 +140,11 @@ class Settings(BaseSettings):
     # RAG ingestion pipeline (scripts/ingest.py)
     RAG_DATA_DIR: str = "./data"
     CHROMA_DB_PATH: str = "./chroma_db"
+    # Vector store. With QDRANT_URL set, a Qdrant server; otherwise an embedded store in QDRANT_PATH
+    # that a single process may open (a separate ingestion worker needs the server).
+    QDRANT_URL: str | None = None
+    QDRANT_API_KEY: SecretStr | None = None
+    QDRANT_PATH: str = "./qdrant_data"
     RAG_CHUNK_SIZE: int = 2000
     RAG_CHUNK_OVERLAP: int = 500
 

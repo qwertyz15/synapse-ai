@@ -16,6 +16,7 @@ Ollama and other model providers.
 ![LangGraph](https://img.shields.io/badge/LangGraph-agents-1C3C3C)
 ![FastAPI](https://img.shields.io/badge/FastAPI-service-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-web%20UI-000000?logo=nextdotjs&logoColor=white)
+![Qdrant](https://img.shields.io/badge/Qdrant-hybrid%20search-DC244C)
 ![MCP](https://img.shields.io/badge/MCP-GitHub%20connector-6E40C9)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -34,8 +35,8 @@ searches the web, does exact calculations, checks the weather, and reads or chan
 repositories through the Model Context Protocol (MCP). It decides which tools a question needs,
 shows each step as it works, and cites the pages it used.
 
-Everything runs under your control: your documents are indexed into Qdrant, chats are
-stored in SQLite, Postgres or MongoDB, and API keys and GitHub tokens never reach the browser. You
+Everything runs under your control: your documents are indexed into Qdrant and found by hybrid
+search (meaning + keywords) with optional reranking, chats are stored in SQLite, Postgres or MongoDB, and API keys and GitHub tokens never reach the browser. You
 choose the model, from hosted APIs to local models served by Ollama, vLLM or SGLang.
 
 ### What you can use it for
@@ -59,6 +60,13 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
   everyone but can't be changed from the web UI.
 - **Chat attachments**: files attached to one conversation are searchable only there, alongside the
   library, and are shown on the message they were sent with.
+- **Accurate document search**: [Qdrant](https://qdrant.tech/) vector database with **hybrid
+  search**, by meaning (embeddings) and keywords (BM25) together, so both paraphrases and exact terms
+  like invoice numbers are found, plus an optional **Voyage AI reranker** (`rerank-2.5-lite`) that
+  puts the passage that actually answers the question first
+  ([details](docs/RAG_Assistant.md#hybrid-search)).
+- **Background indexing**: uploads are queued in Redis and indexed by a Celery worker with strict
+  memory limits, while the Library shows each file's progress.
 - **Connectors (MCP)**: **+ → Connectors → GitHub** adds GitHub tools to a chat. Each user connects
   their own account with OAuth. Access is read-only unless they turn on **Allow changes**.
 - **Chat history**: past conversations grouped by date, with search. Deleting a chat also removes
@@ -220,8 +228,8 @@ make run
 This is the same database the Docker setup uses, so accounts and chats are shared between the two.
 Docker sets its own `POSTGRES_HOST` and `DATABASE_TYPE`, so these settings don't affect `make up`.
 
-Coming from an older version that stored documents in Chroma? Copy them into Qdrant once with
-`python scripts/migrate_chroma_to_qdrant.py` (no re-embedding needed).
+Synapse used to store documents in Chroma; it now uses Qdrant. Coming from that older version? Copy
+your documents into Qdrant once with `make migrate-chroma` (no re-embedding needed).
 
 ## Using the app
 
@@ -246,6 +254,9 @@ likely to set:
 | `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, … | At least one model provider |
 | `DEFAULT_MODEL` | The model new chats use, e.g. `deepseek-v4-flash` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `VOYAGE_API_KEY` | Document search: `openai` (uses `OPENAI_API_KEY`) or `voyage` |
+| `HYBRID_SEARCH`, `HYBRID_FUSION` | Search by meaning and keywords together (on by default, `dbsf` fusion); see [Hybrid search](docs/RAG_Assistant.md#hybrid-search) |
+| `RERANKER`, `RERANK_MODEL`, `RERANK_CANDIDATES`, `RERANK_TOP_K` | Reorder search results with a reranker: `RERANKER=voyage`, `RERANK_MODEL=rerank-2.5-lite` (uses `VOYAGE_API_KEY`); see [Reranking](docs/RAG_Assistant.md#reranking) |
+| `QDRANT_URL`, `REDIS_URL` | A Qdrant server and background indexing; without them, an embedded Qdrant folder and indexing during the upload. Docker sets both |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_SLUG`, `WEB_SESSION_SECRET` | Connect GitHub; see [GitHub setup](docs/GitHub_MCP_Agent.md) |
 | `AUTH_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`, `SIGNUPS`, `ALLOWED_EMAILS` | Google sign-in, admins and who may join; see [Google sign-in](docs/Google_Sign_In.md) |
 | `USER_KEYS_SECRET` | Lets signed-in users save their own OpenAI, Anthropic, DeepSeek, Gemini, Groq or OpenRouter key; see [Your own API keys](docs/Google_Sign_In.md#your-own-api-keys) |
@@ -287,8 +298,8 @@ flowchart LR
   embedded into Qdrant, with vectors and payload kept on disk. Searches are **hybrid**: by meaning and
   by keywords (BM25) together, so exact terms like invoice numbers are found too
   ([details](docs/RAG_Assistant.md#hybrid-search)); with `RERANKER=voyage`, a Voyage reranker then
-  picks the passages that best answer the question ([details](docs/RAG_Assistant.md#reranking)). The shared library lives in the `rag_documents` collection, each user's
-  own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
+  picks the passages that best answer the question ([details](docs/RAG_Assistant.md#reranking)).
+  The shared library lives in the `rag_documents` collection, each user's own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
   (tagged with their chat and user). A search returns the best-matching
   passages, never whole files.
 - **Conversation memory**: every message, tool call and tool result in a chat is saved and sent back

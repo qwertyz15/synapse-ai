@@ -4,6 +4,7 @@ import type {
   ChatAttachment,
   ChatMessage,
   IngestionResult,
+  PlanInfo,
   RagDocument,
   ServiceMetadata,
   StreamEvent,
@@ -46,6 +47,9 @@ export async function getAccount(): Promise<{ enabled: boolean; account: Account
   if (!res.ok) throw await toApiError(res);
   return res.json();
 }
+
+/** The signed-in account's plan and today's usage; null without an account. */
+export const getPlan = () => request<PlanInfo | null>("auth/plan");
 
 export async function signOut(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST" });

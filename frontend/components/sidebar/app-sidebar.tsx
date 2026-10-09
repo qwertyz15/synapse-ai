@@ -258,8 +258,10 @@ function NavLink({
   );
 }
 
+const PLAN_LABELS = { admin: "Admin", unlimited: "Unlimited plan", free: "Free plan" } as const;
+
 function AccountMenu() {
-  const { account } = useApp();
+  const { account, plan } = useApp();
   const router = useRouter();
   if (!account) return null;
   const label = account.name || account.email;
@@ -284,7 +286,12 @@ function AccountMenu() {
       <DropdownMenuContent side="top" className="w-60">
         <DropdownMenuItem disabled className="flex-col items-start gap-0 opacity-100">
           <span className="truncate text-sm">{account.email}</span>
-          {account.is_admin && <span className="text-xs text-muted-foreground">Admin</span>}
+          {plan && (
+            <span className="text-xs text-muted-foreground">
+              {PLAN_LABELS[plan.plan]}
+              {plan.daily_limit !== null && ` · ${plan.messages_today} of ${plan.daily_limit} messages today`}
+            </span>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={leave}>
           <LogOutIcon /> Sign out

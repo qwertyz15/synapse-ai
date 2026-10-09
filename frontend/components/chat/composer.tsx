@@ -100,8 +100,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
 });
 
 function ModelPicker() {
-  const { info, model, setModel } = useApp();
-  if (!info || info.models.length === 0) return <span />;
+  const { info, model, setModel, models } = useApp();
+  if (!info || models.length === 0) return <span />;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -113,7 +113,7 @@ function ModelPicker() {
       <DropdownMenuContent className="w-56">
         <DropdownMenuRadioGroup value={model} onValueChange={(v) => setModel(v as string)}>
           <DropdownMenuLabel>Model</DropdownMenuLabel>
-          {info.models.map((m) => (
+          {models.map((m) => (
             <DropdownMenuRadioItem key={m} value={m}>
               {m}
             </DropdownMenuRadioItem>

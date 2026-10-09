@@ -10,10 +10,11 @@ import {
   getAllThreads,
   getGithubStatus,
   getInfo,
+  getPlan,
   type Account,
   type GithubStatus,
 } from "@/lib/api";
-import type { ServiceMetadata, ThreadInfo } from "@/lib/types";
+import type { PlanInfo, ServiceMetadata, ThreadInfo } from "@/lib/types";
 
 type AppState = {
   info: ServiceMetadata | null;
@@ -35,6 +36,11 @@ type AppState = {
   setGithubWrite: (on: boolean) => void;
   /** The signed-in user when sign-in is on; null when it's off or still loading. */
   account: Account | null;
+  /** The account's plan and today's usage; null without an account. */
+  plan: PlanInfo | null;
+  refreshPlan: () => void;
+  /** Models the user may pick: the plan's when it limits them, otherwise every model. */
+  models: string[];
 };
 
 const GITHUB_ERRORS: Record<string, string> = {
@@ -76,6 +82,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [github, setGithub] = useState<GithubStatus | null>(null);
   const [githubWrite, setGithubWriteState] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
+  const [plan, setPlan] = useState<PlanInfo | null>(null);
 
   useEffect(() => {
     getAccount()
@@ -153,6 +160,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [infoAttempt]);
 
+  const refreshPlan = useCallback(() => {
+    if (!account) return;
+    getPlan()
+      .then(setPlan)
+      .catch(() => setPlan(null));
+  }, [account]);
+
+  useEffect(() => {
+    refreshPlan();
+  }, [refreshPlan]);
+
+  const models = useMemo(() => plan?.models ?? info?.models ?? [], [plan, info]);
+
+  useEffect(() => {
+    // A model saved before the plan changed, or the service default, may not be allowed.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- correcting the selection to what the plan allows
+    if (models.length && model && !models.includes(model)) setModelState(models[0]);
+  }, [models, model]);
+
   const refreshThreads = useCallback(() => {
     if (!info) return;
     getAllThreads(info.agents.map((a) => a.key))
@@ -193,6 +219,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       githubWrite,
       setGithubWrite,
       account,
+      plan,
+      refreshPlan,
+      models,
     }),
     [
       info,
@@ -208,6 +237,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       githubWrite,
       setGithubWrite,
       account,
+      plan,
+      refreshPlan,
+      models,
     ],
   );
 

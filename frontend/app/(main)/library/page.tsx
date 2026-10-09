@@ -23,7 +23,7 @@ import type { IngestionResult, RagDocument } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
-const MAX_BYTES = 25 * 1024 * 1024;
+const DEFAULT_MAX_MB = 25;
 
 function summarize(r: IngestionResult): string {
   const parts = [
@@ -36,7 +36,8 @@ function summarize(r: IngestionResult): string {
 }
 
 export default function LibraryPage() {
-  const { sidebarOpen, setSidebarOpen, setMobileNavOpen } = useApp();
+  const { sidebarOpen, setSidebarOpen, setMobileNavOpen, plan } = useApp();
+  const maxMb = plan?.max_file_mb ?? DEFAULT_MAX_MB;
   const [docs, setDocs] = useState<RagDocument[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -61,9 +62,9 @@ export default function LibraryPage() {
 
   const upload = async (files: File[]) => {
     if (!files.length || uploading) return;
-    const tooBig = files.filter((f) => f.size > MAX_BYTES);
-    const ok = files.filter((f) => f.size <= MAX_BYTES);
-    const local: [string, string][] = tooBig.map((f) => [f.name, "larger than 25 MB"]);
+    const tooBig = files.filter((f) => f.size > maxMb * 1024 * 1024);
+    const ok = files.filter((f) => f.size <= maxMb * 1024 * 1024);
+    const local: [string, string][] = tooBig.map((f) => [f.name, `larger than ${maxMb} MB`]);
     setProblems(local);
     if (!ok.length) return;
     setUploading(true);
@@ -145,7 +146,11 @@ export default function LibraryPage() {
             <p className="font-medium">
               {uploading ? "Uploading and indexing…" : "Drop files here or click to upload"}
             </p>
-            <p className="text-xs text-muted-foreground">PDF, DOCX, TXT or Markdown · up to 25 MB each</p>
+            <p className="text-xs text-muted-foreground">
+              PDF, DOCX, TXT or Markdown · up to {maxMb} MB each
+              {plan?.library_files != null &&
+                ` · ${plan.library_files} file${plan.library_files === 1 ? "" : "s"} on the free plan`}
+            </p>
             <input
               ref={input}
               type="file"
@@ -170,7 +175,10 @@ export default function LibraryPage() {
           )}
 
           <section>
-            <h2 className="mb-3 text-sm font-medium">Your documents{mine ? ` (${mine.length})` : ""}</h2>
+            <h2 className="mb-3 text-sm font-medium">
+              Your documents
+              {mine ? ` (${mine.length}${plan?.library_files != null ? ` of ${plan.library_files}` : ""})` : ""}
+            </h2>
             {loadError ? (
               <div className="flex items-center justify-between gap-3 rounded-xl border p-4 text-sm">
                 <span className="text-destructive">{loadError}</span>

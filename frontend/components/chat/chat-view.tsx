@@ -25,7 +25,7 @@ type Props = {
 };
 
 export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: Props) {
-  const { info, model, refreshThreads, github, githubWrite } = useApp();
+  const { info, model, refreshThreads, refreshPlan, github, githubWrite } = useApp();
   const chatConnectors = useChatConnectors(threadId);
   const { connectors } = chatConnectors;
   const activeConnectors = useMemo(() => (supportsConnectors(agent) ? connectors : []), [agent, connectors]);
@@ -87,12 +87,13 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
         abortRef.current = null;
         setStreaming(false);
         refreshThreads();
+        refreshPlan();
         // The service names a new chat in the background; pick the title up if it lands after the reply.
         if (firstMessage) for (const ms of [3000, 10000]) window.setTimeout(refreshThreads, ms);
         composerRef.current?.focus();
       }
     },
-    [agent, threadId, model, refreshThreads, activeConnectors, githubWrite, unsent, markSent],
+    [agent, threadId, model, refreshThreads, refreshPlan, activeConnectors, githubWrite, unsent, markSent],
   );
 
   const stop = useCallback(() => abortRef.current?.abort(), []);

@@ -17,6 +17,7 @@ type Route = { method: string; pattern: RegExp; userId?: "body" | "query"; limit
 
 const ROUTES: Route[] = [
   { method: "GET", pattern: /^info$/ },
+  { method: "GET", pattern: /^auth\/plan$/, userId: "query" },
   { method: "POST", pattern: new RegExp(`^${AGENT}/stream$`), userId: "body", limit: "chat", maxBytes: 256 * 1024 },
   { method: "POST", pattern: new RegExp(`^${AGENT}/history$`), userId: "body" },
   { method: "GET", pattern: new RegExp(`^${AGENT}/threads$`), userId: "query" },

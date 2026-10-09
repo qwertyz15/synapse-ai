@@ -160,6 +160,27 @@ it("renames chats as the browser's user", async () => {
   expect(JSON.parse(calls[0].body)).toEqual({ title: "New name" });
 });
 
+it("asks for the plan as the browser's user and never exposes sign-in", async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL) => {
+      urls.push(String(input));
+      return Response.json(null);
+    }),
+  );
+  const req = new NextRequest("http://localhost:3000/api/agent/auth/plan?user_id=spoofed");
+  req.cookies.set("uid", "browser-1");
+  await GET(req, { params: Promise.resolve({ path: ["auth", "plan"] }) });
+  expect(new URL(urls[0]).searchParams.get("user_id")).toBe("browser-1");
+
+  const signIn = await POST(new NextRequest("http://localhost:3000/api/agent/auth/sign-in", { method: "POST" }), {
+    params: Promise.resolve({ path: ["auth", "sign-in"] }),
+  });
+  expect(signIn.status).toBe(404);
+  expect(urls).toHaveLength(1);
+});
+
 it("scopes the document library to the browser's user", async () => {
   const urls: string[] = [];
   vi.stubGlobal(

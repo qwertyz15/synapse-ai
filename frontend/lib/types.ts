@@ -81,3 +81,14 @@ export type AttachmentResult = {
   failed: Record<string, string>;
   rejected: Record<string, string>;
 };
+
+export type PlanInfo = {
+  plan: "admin" | "unlimited" | "free";
+  messages_today: number;
+  /** null means no daily limit */
+  daily_limit: number | null;
+  /** null means every model */
+  models: string[] | null;
+  max_file_mb: number | null;
+  library_files: number | null;
+};

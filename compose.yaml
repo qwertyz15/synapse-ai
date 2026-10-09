@@ -27,7 +27,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/info"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -51,6 +51,9 @@ services:
         - path: src/core/
           action: sync+restart
           target: /app/core/
+        - path: src/db/
+          action: sync+restart
+          target: /app/db/
         - path: src/ingestion/
           action: sync+restart
           target: /app/ingestion/
@@ -94,7 +97,7 @@ services:
     depends_on:
       - agent_service
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/healthz')"]
       interval: 5s
       timeout: 5s
       retries: 5

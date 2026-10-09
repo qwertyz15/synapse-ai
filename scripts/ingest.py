@@ -1,4 +1,4 @@
-"""Ingest documents into the RAG assistant's Chroma database.
+"""Ingest documents into the RAG assistant's shared library (Qdrant).
 
 Only new, changed and deleted files are processed; re-running with no changes does nothing.
 Supported types: PDF, DOCX, TXT, MD.
@@ -42,7 +42,11 @@ def print_report(report: IngestionReport) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--source", default=settings.RAG_DATA_DIR, help="Folder of documents")
-    parser.add_argument("--db", default=settings.CHROMA_DB_PATH, help="Chroma database folder")
+    parser.add_argument(
+        "--db",
+        default=settings.CHROMA_DB_PATH,
+        help="Old Chroma folder, read once to import its manifest",
+    )
     parser.add_argument("--full-rebuild", action="store_true", help="Re-embed every document")
     parser.add_argument("--dry-run", action="store_true", help="Report changes without writing")
     args = parser.parse_args()

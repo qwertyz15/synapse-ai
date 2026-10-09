@@ -1,6 +1,21 @@
 # Creating a RAG assistant
 
-You can build a RAG assistant using a Chroma database.
+You can build a RAG assistant on a Qdrant vector store.
+
+## Where vectors are stored
+
+- **Qdrant server** when `QDRANT_URL` is set. Docker Compose runs one (`qdrant` service) and sets
+  it; its memory cap is `QDRANT_MEMORY_LIMIT` (512 MB by default). Collections keep vectors, payload
+  and the index on disk, so memory stays small.
+- **Embedded store** in `QDRANT_PATH` (`./qdrant_data`) otherwise, e.g. for `./run.sh`. Only one
+  process can open it, so a separate ingestion worker needs the server.
+
+Coming from an older version that used Chroma? Copy your data across once, without re-embedding:
+
+```sh
+python scripts/migrate_chroma_to_qdrant.py --dry-run   # see what would be copied
+python scripts/migrate_chroma_to_qdrant.py
+```
 
 ## Choosing an embedding provider
 
@@ -20,7 +35,7 @@ provider or model changes.
 The easiest way is the **Documents** page in the Streamlit app's sidebar. You can upload PDF,
 Word, text and Markdown files there (up to 25 MB each), see what's indexed, and delete documents.
 Uploads go through the service's `/rag/documents` API, which also works under Docker Compose,
-where `./data` and `./chroma_db` are mounted into the service container.
+where `./data` is mounted into the service container.
 
 To ingest from the command line instead:
 
@@ -33,7 +48,7 @@ To ingest from the command line instead:
    python scripts/ingest.py
    ```
 
-The database is written to `./chroma_db` (or `CHROMA_DB_PATH`). Ingestion is incremental:
+Chunks are written to the `rag_documents` collection in Qdrant. Ingestion is incremental:
 
 - It only parses and embeds new and changed files, and removes deleted files from the index.
   Re-running with no changes does nothing.
@@ -54,7 +69,7 @@ independently, e.g. to add a new document source.
 
 To create a RAG assistant:
 
-1. The search tool in [`tools.py` file](../src/agents/tools.py) reads the database at `CHROMA_DB_PATH`.
+1. The search tool in [`tools.py` file](../src/agents/tools.py) searches the Qdrant collections.
 2. Modify the amount of documents returned, currently set to 5.
 3. Update the `database_search_func` function description to accurately describe what the purpose and contents of your database is.
 4. Open [`rag_assistant.py` file](../src/agents/rag_assistant.py) and update the agent's instuctions to describe what the assistant's speciality is and what knowledge it has access to, for example:

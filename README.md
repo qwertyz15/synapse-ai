@@ -34,7 +34,7 @@ searches the web, does exact calculations, checks the weather, and reads or chan
 repositories through the Model Context Protocol (MCP). It decides which tools a question needs,
 shows each step as it works, and cites the pages it used.
 
-Everything runs under your control: your documents are indexed into a local ChromaDB, chats are
+Everything runs under your control: your documents are indexed into Qdrant, chats are
 stored in SQLite, Postgres or MongoDB, and API keys and GitHub tokens never reach the browser. You
 choose the model, from hosted APIs to local models served by Ollama, vLLM or SGLang.
 
@@ -131,7 +131,7 @@ likely to set:
 
 Provider-specific guides: [Ollama](docs/Ollama.md) ·
 [local GPUs with vLLM / SGLang](docs/Local_GPU_Deployment.md) · [Vertex AI](docs/VertexAI.md) ·
-[RAG and ChromaDB](docs/RAG_Assistant.md) · [file-based credentials](docs/File_Based_Credentials.md).
+[RAG and Qdrant](docs/RAG_Assistant.md) · [file-based credentials](docs/File_Based_Credentials.md).
 
 ## How it works
 
@@ -142,7 +142,7 @@ flowchart LR
     S --> A[LangGraph agents]
     A --> T["Tools: DocumentSearch, WebSearch,<br/>Calculator, Weather"]
     A --> G[GitHub MCP server]
-    T --> C[("ChromaDB<br/>shared + personal libraries,<br/>chat attachments")]
+    T --> C[("Qdrant<br/>shared + personal libraries,<br/>chat attachments")]
     S --> M[("Chat history<br/>SQLite / Postgres / MongoDB")]
 ```
 
@@ -153,7 +153,7 @@ flowchart LR
   chats with the GitHub connector on, and passed to the GitHub tools as run context, which is never
   saved with the conversation.
 - **Documents** are parsed (pypdf, docx2txt), cleaned, split into ~2,000-character chunks and
-  embedded into ChromaDB. The shared library lives in the `rag_documents` collection, each user's
+  embedded into Qdrant, with vectors and payload kept on disk. The shared library lives in the `rag_documents` collection, each user's
   own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
   (tagged with their chat and user). A search returns the best-matching
   passages, never whole files.
@@ -187,7 +187,7 @@ src/
   agents/        agents, tools and the shared GitHub MCP tools
   service/       FastAPI service: chat, history, threads, library, attachments, AG-UI
   db/            SQLAlchemy models, Alembic migrations and queries for the app database
-  ingestion/     document parsing, chunking and ChromaDB indexing
+  ingestion/     document parsing, chunking and Qdrant indexing
   memory/        SQLite / Postgres / MongoDB checkpointers
   core/          settings, model setup, embeddings
   schema/        API schemas and the model catalog

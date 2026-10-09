@@ -14,7 +14,7 @@ When you send a message in the web UI:
 3. The agent graph (`agents/research_assistant.py`) loads the chat's history from the checkpointer
    (`memory/`), adds its instructions, and calls the model (`core/llm.py`).
 4. If the model asks for tools, they run (`agents/tools.py`, `agents/github_tools.py`). Document
-   search reads ChromaDB (`ingestion/`), then the model is called again with the results.
+   search reads Qdrant (`ingestion/`), then the model is called again with the results.
 5. Each new message is saved to the checkpointer and streamed back as Server-Sent Events: tokens
    while the model writes, then the full messages, then `[DONE]`.
 
@@ -67,7 +67,8 @@ When you send a message in the web UI:
 | `parsers.py` | Extracts text: pypdf for PDFs (page by page), docx2txt for Word, a plain read for text and Markdown. |
 | `cleaning.py` | Normalizes text: unicode, joined hyphenated words, extra spaces and blank lines. |
 | `chunking.py` | Splits text into ~2,000-character chunks with 500 overlap and attaches metadata (file, page, hash). |
-| `index.py` | Opens ChromaDB. `chroma_client` shares one client per database folder; parallel searches crashed without it. |
+| `vectors.py` | `VectorStore`: one Qdrant collection (server via `QDRANT_URL`, or embedded in `QDRANT_PATH`), on-disk vectors, batched writes, filtered search. |
+| `index.py` | The shared library collection and helpers to replace or re-tag a document's chunks. |
 | `attachments.py` | Chat attachments in their own `chat_attachments` collection, tagged with `thread_id` and `user_id`: add, list, delete, delete-all-for-a-chat and scoped search. |
 | `manifest.py` | Which library files are indexed (hash, chunk count, time), in the `library_documents` table. Imports the older `chroma_db/ingestion_manifest.sqlite` once if present. |
 | `changes.py` | Compares files with the manifest to find new, updated, unchanged and deleted ones. |
@@ -80,7 +81,7 @@ When you send a message in the web UI:
 | `engine.py` | Picks the database (`APP_DATABASE_URL`, else `sqlite:///app.db`, or Postgres when `DATABASE_TYPE=postgres`), creates the async engine for the service and a sync one for ingestion, and applies Alembic migrations on first use. |
 | `models.py` | The tables: `chats` (owner, agent, title, created/updated), `chat_attachments`, `library_documents` and `app_meta`. |
 | `chats.py` | Queries used by the service: claim a chat on each message (creates it, bumps `updated_at`, refuses other users), list chats per agent or across agents, attachment rows, delete. |
-| `backfill.py` | One-time imports at startup: chats from existing checkpoints and attachments from Chroma, so data from before the app database isn't lost. |
+| `backfill.py` | One-time imports at startup: chats from existing checkpoints and attachments already in the vector store, so data from before the app database isn't lost. |
 | `migrations/` | Alembic migrations. Create new ones with `uv run alembic revision --autogenerate -m "..."` after changing `models.py`. |
 
 ## `memory/` — where chats are saved
@@ -121,8 +122,9 @@ When you send a message in the web UI:
 |---|---|---|
 | Chat messages and tool results | `checkpoints.db` (or Postgres/MongoDB) | the checkpointer in `memory/` |
 | Library files | `data/` | `service/rag.py` uploads, or you |
-| Library chunks and embeddings | `chroma_db/`, collection `rag_documents` | `ingestion/pipeline.py` |
-| Chat attachment chunks | `chroma_db/`, collection `chat_attachments` | `ingestion/attachments.py` |
+| Library chunks and embeddings | Qdrant, collection `rag_documents` | `ingestion/pipeline.py` |
+| Chat attachment chunks | Qdrant, collection `chat_attachments` | `ingestion/attachments.py` |
+| Users' own library chunks | Qdrant, collection `user_library` | `ingestion/user_library.py` |
 | Chat list (owner, title, times) and attachment rows | `app.db` (or Postgres), tables `chats`, `chat_attachments` | `db/chats.py` |
 | Which library files are indexed | `app.db` (or Postgres), table `library_documents` | `ingestion/manifest.py` |
 | GitHub tokens | nowhere on the server; an encrypted cookie in the browser | the web UI |

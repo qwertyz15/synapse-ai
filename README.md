@@ -19,7 +19,7 @@ Ollama and other model providers.
 ![MCP](https://img.shields.io/badge/MCP-GitHub%20connector-6E40C9)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Quickstart](#quickstart) · [Features](#features) · [How it works](#how-it-works) ·
+[Getting started](#getting-started) · [Features](#features) · [How it works](#how-it-works) ·
 [Configuration](#configuration) · [API](#api-and-python-client)
 
 </div>
@@ -72,20 +72,75 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
 - **Many model providers**: DeepSeek, OpenAI, Anthropic, Google, Groq, AWS Bedrock, Ollama,
   OpenRouter and OpenAI-compatible servers.
 
-## Quickstart
+## Getting started
 
-You need [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 20.9 or newer.
+There are two ways to run Synapse. Both use the same code and the same `.env`.
+
+| | **Docker** | **Manual** |
+|---|---|---|
+| Best for | Servers, or trying the full setup in one command | Development on your own machine |
+| You need | [Docker](https://docs.docker.com/get-docker/) with Compose | [uv](https://docs.astral.sh/uv/getting-started/installation/) and Node.js 20.9+ |
+| Databases | PostgreSQL, Qdrant and Redis in containers | SQLite files and an embedded Qdrant folder (no servers), or your own servers |
+| Uploads | Indexed in the background by a Celery worker | Indexed during the upload, or by a worker you start |
+
+### 1. Get the code and configure it (both ways)
 
 ```sh
-git clone https://github.com/qwertyz15/agent-service-toolkit.git
-cd agent-service-toolkit
-cp .env.example .env    # then add at least one model API key (see Configuration)
+git clone https://github.com/qwertyz15/synapse-ai.git
+cd synapse-ai
+cp .env.example .env
+```
 
-./run.sh                # service on :8080, web UI on http://localhost:3000
+In `.env`, add at least one model key (e.g. `DEEPSEEK_API_KEY` or `OPENAI_API_KEY`). For document
+search, also set an embeddings provider (`OPENAI_API_KEY`, or `EMBEDDING_PROVIDER=voyage` with
+`VOYAGE_API_KEY`). Everything else is optional; see [Configuration](#configuration). To try the UI
+without spending API credits, set `USE_FAKE_MODEL=true`.
+
+### 2a. Run with Docker
+
+Docker needs two secrets in `.env` (generate them once and keep them; the database is created with
+the password):
+
+```sh
+echo "AUTH_SECRET=$(openssl rand -hex 32)" >> .env
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
+
+docker compose up -d --build
+```
+
+Open <http://localhost:3000>. This starts the web UI, the agent service (port 8080), PostgreSQL,
+Qdrant, Redis, the background indexing worker and the legacy Streamlit app (port 8501).
+
+| Command | What it does |
+|---|---|
+| `docker compose ps` | Status of every service |
+| `docker compose logs -f worker` | Watch uploads being indexed |
+| `docker compose down` | Stop everything; data stays in Docker volumes |
+| `docker compose watch` | Development mode: rebuild or sync services when you change code |
+| `docker compose up -d --build` | Apply changes to `pyproject.toml`, `uv.lock` or `frontend/package-lock.json` |
+
+Good to know:
+
+- Only the web UI is meant to be reached from other machines; the agent service, PostgreSQL and
+  Streamlit listen on this machine only, and Qdrant and Redis aren't published at all.
+- Chats, accounts and the app database always live in the PostgreSQL volume (whatever
+  `DATABASE_TYPE` or `APP_DATABASE_URL` say), so they survive rebuilds and the worker sees them.
+- Memory is capped per container: Qdrant `QDRANT_MEMORY_LIMIT` (512 MB), Redis 128 MB and the
+  worker `WORKER_MEMORY_LIMIT` (1 GB); see [background indexing](docs/RAG_Assistant.md#background-indexing).
+- Docker and `./run.sh` use the same ports (3000 and 8080), so run one at a time.
+
+### 2b. Run manually
+
+**Simple: one command, no extra servers**
+
+```sh
+./run.sh                # web UI on http://localhost:3000, agent service on :8080
 ```
 
 `run.sh` installs the dependencies on first run, starts the agent service and the web UI together,
-and stops both on Ctrl+C or if either one exits.
+and stops both on Ctrl+C or if either one exits. Data is kept in local files: SQLite for chats and
+the app database, and an embedded Qdrant store in `./qdrant_data`. Uploads are indexed while you
+wait, so no worker is needed.
 
 | Option | What it does |
 |---|---|
@@ -93,7 +148,34 @@ and stops both on Ctrl+C or if either one exits.
 | `./run.sh --streamlit` | Also start the legacy Streamlit app on port 8501 |
 | `PORT=8090 WEB_PORT=3001 ./run.sh` | Use different ports |
 
-To try the UI without spending API credits, set `USE_FAKE_MODEL=true` in `.env`.
+**With background indexing (optional)**
+
+To index uploads in the background like the Docker setup, run Redis and a Qdrant server yourself
+(installed natively, or with Docker as below), point `.env` at them and start a worker next to
+`./run.sh`:
+
+```sh
+docker run -d --name synapse-redis -p 127.0.0.1:6379:6379 redis:7.4-alpine
+docker run -d --name synapse-qdrant -p 127.0.0.1:6333:6333 -v synapse_qdrant:/qdrant/storage qdrant/qdrant:v1.19.0
+```
+
+```env
+REDIS_URL=redis://localhost:6379/0
+QDRANT_URL=http://localhost:6333
+```
+
+```sh
+./run.sh                                          # terminal 1: web UI and agent service
+cd src && uv run celery -A worker worker -Q ingestion   # terminal 2: the worker
+```
+
+The worker and the agent service are separate processes, so they need the Qdrant **server**: the
+embedded `./qdrant_data` folder can only be opened by one process. With `REDIS_URL` set, uploads wait
+in the queue until a worker picks them up, so keep the worker running. To use PostgreSQL instead of
+SQLite, set `DATABASE_TYPE=postgres` and the `POSTGRES_*` settings.
+
+Coming from an older version that stored documents in Chroma? Copy them into Qdrant once with
+`python scripts/migrate_chroma_to_qdrant.py` (no re-embedding needed).
 
 ## Using the app
 
@@ -190,37 +272,21 @@ src/
   agents/        agents, tools and the shared GitHub MCP tools
   service/       FastAPI service: chat, history, threads, library, attachments, AG-UI
   db/            SQLAlchemy models, Alembic migrations and queries for the app database
-  ingestion/     document parsing, chunking and Qdrant indexing
+  ingestion/     document parsing, chunking, Qdrant indexing and upload jobs
+  worker/        Celery worker that indexes uploads in the background
   memory/        SQLite / Postgres / MongoDB checkpointers
   core/          settings, model setup, embeddings
   schema/        API schemas and the model catalog
   client/        Python AgentClient
   streamlit_app.py  legacy Streamlit UI
 frontend/        Next.js web UI (see frontend/README.md)
-docker/          Dockerfiles for the service, web UI and Streamlit app
+docker/          Dockerfiles for the service (also used by the worker), web UI and Streamlit app
 tests/           Python tests
 scripts/         ingestion, smoke tests and helpers
 docs/            guides
-run.sh           start everything locally
+compose.yaml     the Docker setup (Getting started, option 2a)
+run.sh           start the web UI and agent service locally (option 2b)
 ```
-
-## Docker
-
-```sh
-cp .env.example .env    # add API keys, AUTH_SECRET and POSTGRES_PASSWORD (openssl rand -hex 32)
-docker compose watch
-```
-
-This starts PostgreSQL, Qdrant, Redis, the agent service (port 8080), a background indexing worker,
-the web UI (<http://localhost:3000>) and the Streamlit app (<http://localhost:8501>), and rebuilds or
-syncs them when you change code. The agent service, Streamlit and PostgreSQL are only reachable from
-this machine, and Compose won't start without `AUTH_SECRET` and `POSTGRES_PASSWORD`. In Docker, chats
-and the app database are always stored in the PostgreSQL container's volume, whatever
-`DATABASE_TYPE` or `APP_DATABASE_URL` say, so they survive rebuilds and the worker sees them.
-
-Memory is capped per container: Qdrant `QDRANT_MEMORY_LIMIT` (512 MB), Redis 128 MB and the worker
-`WORKER_MEMORY_LIMIT` (1 GB); see [background indexing](docs/RAG_Assistant.md#background-indexing). After
-changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `docker compose up --build`.
 
 ## API and Python client
 

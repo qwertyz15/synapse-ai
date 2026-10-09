@@ -68,7 +68,7 @@ To ingest from the command line instead:
 
 1. Put your documents in `./data` (or set `RAG_DATA_DIR`). PDF, Word (`.docx`), text (`.txt`) and
    Markdown (`.md`) files are supported, including in subfolders.
-2. Assuming you have already followed the [Quickstart](../README.md#quickstart) and activated the
+2. Assuming you have already followed the [Getting started](../README.md#getting-started) and activated the
    virtual environment, run:
 
    ```sh

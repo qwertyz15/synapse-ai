@@ -34,6 +34,7 @@ from schema import (
     RagDocuments,
 )
 from service.locks import ingestion_lock
+from service.plans import upload_limits
 
 logger = logging.getLogger(__name__)
 
@@ -86,12 +87,15 @@ def list_documents() -> RagDocuments:
     )
 
 
-async def _read_uploads(files: list[UploadFile]) -> tuple[dict[str, bytes], dict[str, str]]:
+async def _read_uploads(
+    files: list[UploadFile], max_mb: int | None = None
+) -> tuple[dict[str, bytes], dict[str, str]]:
     """Accepted name -> content, and rejected name -> reason."""
     if len(files) > MAX_FILES_PER_UPLOAD:
         raise HTTPException(
             status_code=413, detail=f"Upload at most {MAX_FILES_PER_UPLOAD} files at a time"
         )
+    max_bytes = min(MAX_UPLOAD_BYTES, max_mb * 1024 * 1024) if max_mb else MAX_UPLOAD_BYTES
     accepted: dict[str, bytes] = {}
     rejected: dict[str, str] = {}
     total = 0
@@ -104,9 +108,9 @@ async def _read_uploads(files: list[UploadFile]) -> tuple[dict[str, bytes], dict
         if Path(name).suffix.lower() not in SUPPORTED_EXTENSIONS:
             rejected[name] = f"Unsupported type; use {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
             continue
-        content = await upload.read(MAX_UPLOAD_BYTES + 1)
-        if len(content) > MAX_UPLOAD_BYTES:
-            rejected[name] = f"Larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB"
+        content = await upload.read(max_bytes + 1)
+        if len(content) > max_bytes:
+            rejected[name] = f"Larger than {max_bytes // (1024 * 1024)} MB"
             continue
         if total + len(content) > MAX_TOTAL_UPLOAD_BYTES:
             rejected[name] = (
@@ -174,8 +178,24 @@ async def list_my_documents(user_id: str) -> RagDocuments:
 
 @router.post("/my-documents")
 async def upload_my_documents(user_id: str, files: list[UploadFile]) -> IngestionResult:
-    """Add files to a user's own library, searchable from all of their chats and nobody else's."""
-    accepted, rejected = await _read_uploads(files)
+    """Add files to a user's own library, searchable from all of their chats and nobody else's.
+
+    Free accounts have a smaller file size limit and a cap on how many files the library holds;
+    replacing a file with the same name doesn't count against the cap.
+    """
+    max_mb, max_files = await upload_limits(user_id)
+    accepted, rejected = await _read_uploads(files, max_mb)
+    if max_files is not None:
+        existing = {d.doc_id for d in await _user_documents(user_id)}
+        free_slots = max_files - len(existing)
+        for name in list(accepted):
+            if name in existing:
+                continue
+            if free_slots > 0:
+                free_slots -= 1
+            else:
+                del accepted[name]
+                rejected[name] = f"Your library is full ({max_files} files on the free plan)"
     result = IngestionResult(rejected=rejected)
     if not accepted:
         return result
@@ -248,7 +268,8 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
     Index files for a single chat. They are searchable only from that conversation (and user),
     alongside the shared library. A file with the same name replaces the earlier one.
     """
-    accepted, rejected = await _read_uploads(files)
+    max_mb, _ = await upload_limits(user_id)
+    accepted, rejected = await _read_uploads(files, max_mb)
     attached: list[str] = []
     failed: dict[str, str] = {}
     if accepted:

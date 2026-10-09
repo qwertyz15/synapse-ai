@@ -141,6 +141,12 @@ class PlanInfo(BaseModel):
     messages_today: int
     daily_limit: int | None = Field(description="Messages allowed per UTC day; null for no limit.")
     models: list[str] | None = Field(description="Models the plan allows; null for every model.")
+    max_file_mb: int | None = Field(
+        description="Largest file the plan may upload, in MB; null for the server's own limit."
+    )
+    library_files: int | None = Field(
+        description="Files the account's library may hold; null for no limit."
+    )
 
 
 class ThreadRename(BaseModel):

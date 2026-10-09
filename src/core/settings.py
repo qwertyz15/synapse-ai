@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     DEFAULT_PLAN: Literal["free", "unlimited"] = "free"
     FREE_MESSAGES_PER_DAY: int = 20
     FREE_MODELS: str = ""
+    # Free accounts' uploads: size of each file (MB) and how many files their library may hold.
+    FREE_MAX_FILE_MB: int = 5
+    FREE_LIBRARY_FILES: int = 10
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None

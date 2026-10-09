@@ -23,6 +23,8 @@ def plan_settings():
         patch.object(settings, "DEFAULT_PLAN", "free"),
         patch.object(settings, "AVAILABLE_MODELS", {FLASH, GPT}),
         patch.object(settings, "DEFAULT_MODEL", GPT),
+        patch.object(settings, "FREE_MAX_FILE_MB", 5),
+        patch.object(settings, "FREE_LIBRARY_FILES", 10),
     ):
         yield
 
@@ -47,7 +49,14 @@ def test_free_accounts_stop_at_the_daily_limit(test_client, replies, plan_settin
     user = _account(test_client)
     assert [_send(test_client, user) for _ in range(3)] == [200, 200, 429]
     plan = test_client.get("/auth/plan", params={"user_id": user}).json()
-    assert plan == {"plan": "free", "messages_today": 2, "daily_limit": 2, "models": None}
+    assert plan == {
+        "plan": "free",
+        "messages_today": 2,
+        "daily_limit": 2,
+        "models": None,
+        "max_file_mb": 5,
+        "library_files": 10,
+    }
 
 
 def test_a_new_day_starts_a_new_allowance(test_client, replies, plan_settings):

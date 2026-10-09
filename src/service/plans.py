@@ -40,6 +40,21 @@ def allowed_models(user: User) -> list[str] | None:
     return [m for m in settings.free_models() if m in available]
 
 
+def max_file_mb(user: User | None) -> int | None:
+    return settings.FREE_MAX_FILE_MB if user and plan_of(user) == "free" else None
+
+
+def library_files(user: User | None) -> int | None:
+    return settings.FREE_LIBRARY_FILES if user and plan_of(user) == "free" else None
+
+
+async def upload_limits(user_id: str) -> tuple[int | None, int | None]:
+    """(largest file in MB, library file cap) for this user; None means no plan limit."""
+    async with async_session_scope() as session:
+        user = await get_user(session, user_id)
+    return max_file_mb(user), library_files(user)
+
+
 async def plan_info(user_id: str) -> PlanInfo | None:
     async with async_session_scope() as session:
         user = await get_user(session, user_id)
@@ -50,6 +65,8 @@ async def plan_info(user_id: str) -> PlanInfo | None:
             messages_today=await messages_on(session, user_id, today()),
             daily_limit=daily_limit(user),
             models=allowed_models(user),
+            max_file_mb=max_file_mb(user),
+            library_files=library_files(user),
         )
 
 

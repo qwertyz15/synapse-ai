@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from unittest.mock import patch
 
 import pytest
@@ -9,9 +10,12 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
+from core import llm
 from core.llm import get_model
 from schema.models import (
     AnthropicModelName,
+    AzureOpenAIModelName,
+    DeepseekModelName,
     FakeModelName,
     GroqModelName,
     OllamaModelName,
@@ -80,9 +84,9 @@ def test_get_model_ollama():
         assert model.temperature == 0.5
 
 
-# get_model is @cache'd, so these call the uncached function directly: clearing the
-# shared cache would evict entries later tests (and app startup) rely on.
-_get_model_uncached = get_model.__wrapped__
+# get_model caches models, so these build them directly: clearing the shared cache would evict
+# entries later tests (and app startup) rely on.
+_get_model_uncached = partial(llm._build, api_key=None)
 
 
 def test_get_model_openrouter():
@@ -115,3 +119,24 @@ def test_get_model_invalid():
     with pytest.raises(ValueError, match="Unsupported model:"):
         # Using type: ignore since we're intentionally testing invalid input
         get_model("invalid_model")  # type: ignore
+
+
+def test_user_keys_apply_only_inside_the_block_and_only_to_their_provider():
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-server"}):
+        server = get_model(OpenAIModelName.GPT_5_NANO)
+        with llm.user_api_keys({"openai": "sk-user", "deepseek": "ds-user"}):
+            mine = get_model(OpenAIModelName.GPT_5_NANO)
+            assert mine is not server
+            assert mine.openai_api_key.get_secret_value() == "sk-user"
+            assert get_model(OpenAIModelName.GPT_5_NANO) is mine
+            deepseek = get_model(DeepseekModelName.DEEPSEEK_V4_FLASH)
+            assert deepseek.openai_api_key.get_secret_value() == "ds-user"
+        assert get_model(OpenAIModelName.GPT_5_NANO) is server
+
+
+def test_provider_mapping():
+    assert llm.provider_of(DeepseekModelName.DEEPSEEK_V4_FLASH) == "deepseek"
+    assert llm.provider_of(AnthropicModelName.HAIKU_45) == "anthropic"
+    assert llm.provider_of(AzureOpenAIModelName.AZURE_GPT_5_MINI) is None
+    assert "claude-haiku-4-5" in llm.models_for("anthropic")
+    assert llm.models_for("nope") == []

@@ -11,6 +11,8 @@ import type {
   ThreadInfo,
   UserKey,
   UserKeys,
+  AdminUser,
+  AdminUserUpdate,
 } from "./types";
 
 const BASE = "/api/agent";
@@ -59,6 +61,11 @@ export const saveKey = (provider: string, apiKey: string) =>
   request<UserKey>(`auth/keys/${provider}`, { ...json({ api_key: apiKey }), method: "PUT" });
 
 export const removeKey = (provider: string) => request<UserKeys>(`auth/keys/${provider}`, { method: "DELETE" });
+
+export const listUsers = () => request<{ users: AdminUser[] }>("admin/users").then((r) => r.users);
+
+export const updateUser = (id: string, change: AdminUserUpdate) =>
+  request<AdminUser>(`admin/users/${id}`, { ...json(change), method: "PATCH" });
 
 export async function signOut(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST" });

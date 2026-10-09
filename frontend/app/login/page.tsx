@@ -3,6 +3,7 @@ import { SynapseLogo } from "@/components/logo";
 const ERRORS: Record<string, string> = {
   not_allowed: "This Synapse is invite-only, and your Google account isn't on the list.",
   unverified: "Your Google account's email address isn't verified.",
+  blocked: "This account has been blocked. Contact the person who runs this Synapse.",
   denied: "Sign-in was cancelled.",
   expired: "The sign-in took too long or was opened in another browser. Please try again.",
   not_configured:

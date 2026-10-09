@@ -11,6 +11,7 @@ import {
   PencilIcon,
   SearchIcon,
   SettingsIcon,
+  ShieldIcon,
   SquarePenIcon,
   SunIcon,
   Trash2Icon,
@@ -294,6 +295,11 @@ function AccountMenu() {
             </span>
           )}
         </DropdownMenuItem>
+        {plan?.plan === "admin" && (
+          <DropdownMenuItem render={<Link href="/admin" />}>
+            <ShieldIcon /> Admin
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem render={<Link href="/settings" />}>
           <SettingsIcon /> Settings
         </DropdownMenuItem>

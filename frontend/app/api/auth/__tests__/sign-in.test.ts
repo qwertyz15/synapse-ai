@@ -42,7 +42,7 @@ const account = (overrides = {}) =>
     sessionKey()!,
   );
 
-function mockGoogle({ verified = true, service = 200 } = {}) {
+function mockGoogle({ verified = true, service = 200, blocked = false } = {}) {
   const calls: { url: string; body?: string }[] = [];
   vi.stubGlobal(
     "fetch",
@@ -62,7 +62,7 @@ function mockGoogle({ verified = true, service = 200 } = {}) {
       if (url.endsWith("/auth/sign-in")) {
         return service === 200
           ? Response.json({ id: "acct-1", email: "ana@x.com", name: "Ana", avatar_url: "p.png", is_admin: true })
-          : Response.json({ detail: "no" }, { status: service });
+          : Response.json({ detail: "no", ...(blocked ? { code: "blocked" } : {}) }, { status: service });
       }
       return Response.json({ threads: [] });
     }),
@@ -133,8 +133,9 @@ describe("Google sign-in", () => {
     ["an unverified email", { verified: false }, "unverified"],
     ["sign-ups that don't allow the email", { service: 403 }, "not_allowed"],
     ["a service failure", { service: 500 }, "failed"],
+    ["a blocked account", { service: 403, blocked: true }, "blocked"],
   ])("sends %s back to the login page", async (_, opts, error) => {
-    mockGoogle(opts as { verified?: boolean; service?: number });
+    mockGoogle(opts as { verified?: boolean; service?: number; blocked?: boolean });
     const { google, cookie } = await startLogin();
     const state = (opts as { state?: string }).state ?? google.searchParams.get("state");
     const res = await callback(request(`/api/auth/callback?code=c1&state=${state}`, { [SIGN_IN_COOKIE]: cookie }));

@@ -97,3 +97,24 @@ export type PlanInfo = {
 export type UserKey = { provider: string; last4: string; added_at: string; verified: boolean };
 
 export type UserKeys = { enabled: boolean; providers: string[]; keys: UserKey[] };
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string | null;
+  avatar_url: string | null;
+  plan: "admin" | "unlimited" | "free";
+  daily_message_limit: number | null;
+  effective_limit: number | null;
+  messages_today: number;
+  own_key_providers: string[];
+  blocked: boolean;
+  created_at: string;
+  last_login_at: string;
+};
+
+export type AdminUserUpdate = {
+  plan?: "free" | "unlimited";
+  daily_message_limit?: number | null;
+  blocked?: boolean;
+};

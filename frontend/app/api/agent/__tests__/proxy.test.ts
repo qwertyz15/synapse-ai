@@ -209,6 +209,34 @@ it("saves personal API keys as the browser's user", async () => {
   expect(calls).toHaveLength(1);
 });
 
+it("calls admin endpoints as the browser's user and only for real account ids", async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL) => {
+      urls.push(String(input));
+      return Response.json({ users: [] });
+    }),
+  );
+  const list = new NextRequest("http://localhost:3000/api/agent/admin/users?user_id=spoofed");
+  list.cookies.set("uid", "browser-1");
+  await GET(list, { params: Promise.resolve({ path: ["admin", "users"] }) });
+  expect(new URL(urls[0]).searchParams.get("user_id")).toBe("browser-1");
+
+  const patch = (id: string) =>
+    PATCH(
+      new NextRequest(`http://localhost:3000/api/agent/admin/users/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ blocked: true }),
+      }),
+      { params: Promise.resolve({ path: ["admin", "users", id] }) },
+    );
+  expect((await patch("7f1968dc-9e1b-4747-8035-f231d03ddfc2")).status).toBe(200);
+  expect((await patch("..%2Fsign-in")).status).toBe(404);
+  expect(urls).toHaveLength(2);
+});
+
 it("scopes the document library to the browser's user", async () => {
   const urls: string[] = [];
   vi.stubGlobal(

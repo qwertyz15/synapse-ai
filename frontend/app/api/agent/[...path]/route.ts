@@ -19,6 +19,8 @@ const ROUTES: Route[] = [
   { method: "GET", pattern: /^info$/ },
   { method: "GET", pattern: /^auth\/plan$/, userId: "query" },
   { method: "GET", pattern: /^auth\/keys$/, userId: "query" },
+  { method: "GET", pattern: /^admin\/users$/, userId: "query" },
+  { method: "PATCH", pattern: /^admin\/users\/[0-9a-f-]{36}$/, userId: "query", maxBytes: 4096 },
   { method: "PUT", pattern: /^auth\/keys\/[a-z]+$/, userId: "query", maxBytes: 4096 },
   { method: "DELETE", pattern: /^auth\/keys\/[a-z]+$/, userId: "query" },
   { method: "POST", pattern: new RegExp(`^${AGENT}/stream$`), userId: "body", limit: "chat", maxBytes: 256 * 1024 },

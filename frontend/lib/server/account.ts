@@ -118,7 +118,8 @@ export async function fetchGoogleProfile(
 }
 
 export type SignInResult =
-  { ok: true; account: Omit<AccountSession, "expiresAt"> } | { ok: false; reason: "not_allowed" | "failed" };
+  | { ok: true; account: Omit<AccountSession, "expiresAt"> }
+  | { ok: false; reason: "not_allowed" | "blocked" | "failed" };
 
 /** Creates or updates the account in the agent service, which also applies the sign-up rules. */
 export async function signInToService(profile: GoogleProfile, anonymousUserId?: string): Promise<SignInResult> {
@@ -138,7 +139,10 @@ export async function signInToService(profile: GoogleProfile, anonymousUserId?: 
     }),
     cache: "no-store",
   });
-  if (res.status === 403) return { ok: false, reason: "not_allowed" };
+  if (res.status === 403) {
+    const body = await res.json().catch(() => ({}));
+    return { ok: false, reason: body.code === "blocked" ? "blocked" : "not_allowed" };
+  }
   if (!res.ok) return { ok: false, reason: "failed" };
   const account = await res.json();
   return {

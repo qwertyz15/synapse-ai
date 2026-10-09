@@ -96,6 +96,18 @@ it("scopes chat attachment requests to the browser's user id", async () => {
   expect(sent.searchParams.get("user_id")).toBe("browser-1");
 });
 
+it("asks for chat history as the browser's user", async () => {
+  const sent = mockService();
+  const req = new NextRequest("http://localhost:3000/api/agent/research-assistant/history", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ thread_id: "t1", user_id: "spoofed" }),
+  });
+  req.cookies.set("uid", "browser-1");
+  await POST(req, { params: Promise.resolve({ path: ["research-assistant", "history"] }) });
+  expect(sent[0].body).toEqual({ thread_id: "t1", user_id: "browser-1" });
+});
+
 it("scopes the document library to the browser's user", async () => {
   const urls: string[] = [];
   vi.stubGlobal(

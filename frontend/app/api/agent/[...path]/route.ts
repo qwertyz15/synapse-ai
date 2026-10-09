@@ -11,7 +11,7 @@ const AGENT = "[a-z0-9][a-z0-9_-]*";
 const ROUTES: { method: string; pattern: RegExp; userId?: "body" | "query" }[] = [
   { method: "GET", pattern: /^info$/ },
   { method: "POST", pattern: new RegExp(`^${AGENT}/stream$`), userId: "body" },
-  { method: "POST", pattern: new RegExp(`^${AGENT}/history$`) },
+  { method: "POST", pattern: new RegExp(`^${AGENT}/history$`), userId: "body" },
   { method: "GET", pattern: new RegExp(`^${AGENT}/threads$`), userId: "query" },
   { method: "GET", pattern: /^chats$/, userId: "query" },
   { method: "DELETE", pattern: new RegExp(`^${AGENT}/threads/[^/]+$`), userId: "query" },

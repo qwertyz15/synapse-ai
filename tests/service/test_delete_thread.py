@@ -8,6 +8,8 @@ from langchain_core.embeddings import DeterministicFakeEmbedding
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import START, MessagesState, StateGraph
 
+from db.chats import claim_chat
+from db.engine import async_session_scope
 from service import app
 
 EMBEDDINGS = DeterministicFakeEmbedding(size=16)
@@ -111,3 +113,26 @@ async def test_history_of_a_deleted_chat_is_empty(client, graph, attachments_db)
     response = client.post("/research-assistant/history", json={"thread_id": "t1"})
     assert response.status_code == 200
     assert response.json() == {"messages": []}
+
+
+async def _claim(thread_id: str, user_id: str):
+    async with async_session_scope() as session:
+        await claim_chat(session, thread_id, user_id, "research-assistant", "hello")
+
+
+@pytest.mark.asyncio
+async def test_history_is_only_returned_to_the_chat_owner(client, graph, attachments_db):
+    await _claim("owned", "u1")
+    await _chat(graph, "owned", "u1")
+
+    def history(user_id):
+        return client.post(
+            "/research-assistant/history", json={"thread_id": "owned", "user_id": user_id}
+        )
+
+    assert len(history("u1").json()["messages"]) == 2
+    assert history("u2").status_code == 404
+    unknown = client.post(
+        "/research-assistant/history", json={"thread_id": "never-claimed", "user_id": "u1"}
+    )
+    assert unknown.json() == {"messages": []}

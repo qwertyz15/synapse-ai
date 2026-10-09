@@ -497,6 +497,13 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
 
     If agent_id is not provided, the default agent will be used.
     """
+    if input.user_id is not None:
+        async with async_session_scope() as session:
+            chat = await get_chat(session, input.thread_id)
+        if chat is None:
+            return ChatHistory(messages=[])
+        if chat.user_id != input.user_id:
+            raise HTTPException(status_code=404, detail="Thread not found")
     agent: AgentGraph = get_agent(agent_id)
     config = RunnableConfig(configurable={"thread_id": input.thread_id})
     try:

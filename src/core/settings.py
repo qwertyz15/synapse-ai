@@ -145,6 +145,18 @@ class Settings(BaseSettings):
     QDRANT_URL: str | None = None
     QDRANT_API_KEY: SecretStr | None = None
     QDRANT_PATH: str = "./qdrant_data"
+
+    # Background indexing. With REDIS_URL set, uploads become jobs for the Celery worker; without
+    # it they're indexed inline in the request. Uploaded files wait in UPLOADS_DIR until indexed.
+    REDIS_URL: str | None = None
+    UPLOADS_DIR: str = "./uploads"
+    # Worker memory and time bounds: tasks in parallel, tasks per process before it's replaced, the
+    # resident memory (MB) after which a process is replaced, and the hard time limit per job.
+    WORKER_CONCURRENCY: int = 1
+    WORKER_MAX_TASKS_PER_CHILD: int = 50
+    WORKER_MAX_MEMORY_MB: int = 700
+    JOB_TIME_LIMIT_S: int = 600
+    JOB_MAX_RETRIES: int = 3
     RAG_CHUNK_SIZE: int = 2000
     RAG_CHUNK_OVERLAP: int = 500
 

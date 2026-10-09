@@ -63,6 +63,26 @@ class UserApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
+class IngestionJob(Base):
+    """One uploaded file on its way into a user's library or a chat: queued, indexing, ready or failed."""
+
+    __tablename__ = "ingestion_jobs"
+    __table_args__ = (Index("ix_ingestion_jobs_user_status", "user_id", "status"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16))  # "library" or "attachment"
+    thread_id: Mapped[str | None] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    error: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    chunk_count: Mapped[int | None] = mapped_column(Integer)
+    replaced: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
 class DailyUsage(Base):
     """Messages an account sent on one UTC day."""
 

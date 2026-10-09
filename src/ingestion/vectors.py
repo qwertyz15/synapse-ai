@@ -5,6 +5,7 @@ which only one process may open (fine for local runs and tests, not for a separa
 Collections keep vectors, payload and the HNSW index on disk so memory stays small.
 """
 
+import atexit
 import threading
 import uuid
 from collections.abc import Collection, Iterator
@@ -46,6 +47,15 @@ def qdrant_client() -> QdrantClient:
             else:
                 _clients[key] = QdrantClient(path=key)
         return _clients[key]
+
+
+@atexit.register
+def _close_clients() -> None:
+    # Closing during interpreter shutdown fails noisily in the embedded store; close first.
+    with _clients_lock:
+        for client in _clients.values():
+            client.close()
+        _clients.clear()
 
 
 def _point_id(chunk_id: str) -> str:
@@ -106,19 +116,26 @@ class VectorStore:
             raise ValueError("Adding chunks needs embeddings")
         for start in range(0, len(chunks), WRITE_BATCH):
             batch = chunks[start : start + WRITE_BATCH]
-            vectors = self.embeddings.embed_documents([c.page_content for c in batch])
-            points = [
-                models.PointStruct(
-                    id=_point_id(str(c.id)),
-                    vector=vector,
-                    payload={**c.metadata, _TEXT: c.page_content, _ID: c.id},
-                )
-                for c, vector in zip(batch, vectors)
-            ]
-            with self._guard():
-                if not self.client.collection_exists(self.collection):
-                    self._create(len(vectors[0]))
-                self.client.upsert(self.collection, points=points)
+            self.add_embedded(
+                batch, self.embeddings.embed_documents([c.page_content for c in batch])
+            )
+
+    def add_embedded(self, chunks: list[Document], vectors: list[list[float]]) -> None:
+        """Write chunks whose vectors are already computed, e.g. copied from another store."""
+        if not chunks:
+            return
+        points = [
+            models.PointStruct(
+                id=_point_id(str(c.id)),
+                vector=list(vector),
+                payload={**c.metadata, _TEXT: c.page_content, _ID: c.id},
+            )
+            for c, vector in zip(chunks, vectors)
+        ]
+        with self._guard():
+            if not self.client.collection_exists(self.collection):
+                self._create(len(points[0].vector))  # type: ignore[arg-type]
+            self.client.upsert(self.collection, points=points)
 
     def count(self, match: dict[str, Any] | None = None) -> int:
         with self._guard():

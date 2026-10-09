@@ -41,6 +41,8 @@ type AppState = {
   refreshPlan: () => void;
   /** Models the user may pick: the plan's when it limits them, otherwise every model. */
   models: string[];
+  /** Show a chat's model, or the user's saved choice for a new chat (null), without saving it. */
+  showChatModel: (chatModel: string | null) => void;
 };
 
 const GITHUB_ERRORS: Record<string, string> = {
@@ -185,10 +187,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!modelsKnown || !info || !models.length || models.includes(model)) return;
     // The saved choice stays stored, so it comes back if the model becomes available again.
-    const fallback = models.includes(info.default_model) ? info.default_model : models[0];
+    const saved = load(STORAGE_MODEL);
+    const fallback =
+      saved && models.includes(saved) ? saved : models.includes(info.default_model) ? info.default_model : models[0];
     // eslint-disable-next-line react-hooks/set-state-in-effect -- correcting the selection to what's available
     setModelState(fallback);
   }, [modelsKnown, info, models, model]);
+
+  // Stable on purpose: pages call it from effects. With no saved choice, the check above picks the default.
+  const showChatModel = useCallback((chatModel: string | null) => {
+    const next = chatModel ?? load(STORAGE_MODEL);
+    if (next) setModelState(next);
+  }, []);
 
   const refreshThreads = useCallback(() => {
     if (!info) return;
@@ -233,6 +243,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       plan,
       refreshPlan,
       models,
+      showChatModel,
     }),
     [
       info,
@@ -251,6 +262,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       plan,
       refreshPlan,
       models,
+      showChatModel,
     ],
   );
 

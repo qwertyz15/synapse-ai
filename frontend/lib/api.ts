@@ -85,8 +85,9 @@ const json = (body: unknown): RequestInit => ({
 
 export const getInfo = () => request<ServiceMetadata>("info");
 
+/** A chat's messages and the model its latest message used. */
 export const getHistory = (agent: string, threadId: string) =>
-  request<{ messages: ChatMessage[] }>(`${agent}/history`, json({ thread_id: threadId })).then((r) => r.messages);
+  request<{ messages: ChatMessage[]; model: string | null }>(`${agent}/history`, json({ thread_id: threadId }));
 
 export const getThreads = (agent: string, limit = 30) =>
   request<{ threads: ThreadInfo[] }>(`${agent}/threads?limit=${limit}`).then((r) => r.threads);

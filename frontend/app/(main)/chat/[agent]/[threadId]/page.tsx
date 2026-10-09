@@ -17,7 +17,7 @@ type Loaded = { key: string } & ({ status: "ready"; turns: Turn[] } | { status: 
 
 export default function ChatThreadPage({ params }: PageProps<"/chat/[agent]/[threadId]">) {
   const { agent, threadId } = use(params);
-  const { info, infoError, setAgent } = useApp();
+  const { info, infoError, setAgent, showChatModel } = useApp();
   const key = `${agent}/${threadId}`;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const state = loaded?.key === key ? loaded : ({ status: "loading" } as const);
@@ -31,12 +31,16 @@ export default function ChatThreadPage({ params }: PageProps<"/chat/[agent]/[thr
   useEffect(() => {
     let cancelled = false;
     getHistory(agent, threadId)
-      .then((messages) => !cancelled && setLoaded({ key, status: "ready", turns: historyToTurns(messages) }))
+      .then((history) => {
+        if (cancelled) return;
+        setLoaded({ key, status: "ready", turns: historyToTurns(history.messages) });
+        showChatModel(history.model);
+      })
       .catch((err: Error) => !cancelled && setLoaded({ key, status: "error", message: err.message }));
     return () => {
       cancelled = true;
     };
-  }, [agent, threadId, key]);
+  }, [agent, threadId, key, showChatModel]);
 
   if (infoError) return <ServiceError message={infoError} />;
 

@@ -9,7 +9,7 @@ import { ServiceError } from "@/components/service-error";
 import { newId } from "@/lib/api";
 
 export default function NewChatPage() {
-  const { agent, infoError } = useApp();
+  const { agent, infoError, showChatModel } = useApp();
   const pathname = usePathname();
   const [threadId, setThreadId] = useState(newId);
   const previousPath = useRef(pathname);
@@ -19,6 +19,11 @@ export default function NewChatPage() {
     if (pathname === "/" && previousPath.current !== "/") setThreadId(newId());
     previousPath.current = pathname;
   }, [pathname]);
+
+  // A new chat starts on the user's own choice of model, not the last chat's.
+  useEffect(() => {
+    if (pathname === "/") showChatModel(null);
+  }, [pathname, showChatModel]);
 
   if (infoError) return <ServiceError message={infoError} />;
   return <ChatView key={`${agent}:${threadId}`} agent={agent} threadId={threadId} isNew />;

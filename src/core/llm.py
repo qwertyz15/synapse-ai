@@ -77,6 +77,8 @@ USER_KEY_PROVIDERS = {
     "openrouter": OpenRouterModelName,
 }
 
+USER_KEY_TIMEOUT_S = 60
+
 # The current request's own keys by provider; set only around one user's run.
 _user_keys: ContextVar[dict[str, str] | None] = ContextVar("user_api_keys", default=None)
 
@@ -126,7 +128,10 @@ def _model_with_key(model_name: AllModelEnum, api_key: str) -> ModelT:
 def _build(model_name: AllModelEnum, api_key: str | None) -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
-    key: dict[str, Any] = {"api_key": api_key} if api_key else {}
+    # On a user's own key, fail fast: a free-tier key asking for a model outside its plan gets the
+    # same 429 on every try, and retrying only keeps the chat "thinking".
+    limits: dict[str, Any] = {"max_retries": 1, "timeout": USER_KEY_TIMEOUT_S} if api_key else {}
+    key: dict[str, Any] = {"api_key": api_key, **limits} if api_key else {}
     api_model_name = _MODEL_TABLE.get(model_name)
     if not api_model_name:
         raise ValueError(f"Unsupported model: {model_name}")
@@ -164,6 +169,7 @@ def _build(model_name: AllModelEnum, api_key: str | None) -> ModelT:
             streaming=True,
             openai_api_base="https://api.deepseek.com",
             openai_api_key=api_key or settings.DEEPSEEK_API_KEY,
+            **limits,
         )
     if model_name in AnthropicModelName:
         if model_name == AnthropicModelName.SONNET_5:
@@ -173,7 +179,13 @@ def _build(model_name: AllModelEnum, api_key: str | None) -> ModelT:
             return ChatAnthropic(model_name=api_model_name, streaming=True, **key)
         return ChatAnthropic(model_name=api_model_name, temperature=0.5, streaming=True, **key)
     if model_name in GoogleModelName:
-        return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True, **key)
+        # The Gemini SDK retries 6 times with backoff by default, ignoring 429 retry hints.
+        return ChatGoogleGenerativeAI(
+            model=api_model_name,
+            temperature=0.5,
+            streaming=True,
+            **(key or {"max_retries": 2, "timeout": USER_KEY_TIMEOUT_S}),
+        )
     if model_name in VertexAIModelName:
         return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
@@ -207,6 +219,7 @@ def _build(model_name: AllModelEnum, api_key: str | None) -> ModelT:
             streaming=True,
             base_url="https://openrouter.ai/api/v1/",
             api_key=api_key or settings.OPENROUTER_API_KEY,
+            **limits,
         )
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])

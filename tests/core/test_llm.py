@@ -17,6 +17,7 @@ from schema.models import (
     AzureOpenAIModelName,
     DeepseekModelName,
     FakeModelName,
+    GoogleModelName,
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
@@ -140,3 +141,14 @@ def test_provider_mapping():
     assert llm.provider_of(AzureOpenAIModelName.AZURE_GPT_5_MINI) is None
     assert "claude-haiku-4-5" in llm.models_for("anthropic")
     assert llm.models_for("nope") == []
+
+
+def test_models_on_a_users_key_fail_fast_and_gemini_retries_less():
+    gemini = next(iter(GoogleModelName))
+    with llm.user_api_keys({"google": "AIza-user-key", "openai": "sk-user"}):
+        mine = get_model(gemini)
+        assert (mine.max_retries, mine.timeout) == (1, llm.USER_KEY_TIMEOUT_S)
+        assert get_model(OpenAIModelName.GPT_5_NANO).max_retries == 1
+    with patch.dict(os.environ, {"GOOGLE_API_KEY": "AIza-server"}):
+        server = _get_model_uncached(gemini)
+        assert (server.max_retries, server.timeout) == (2, llm.USER_KEY_TIMEOUT_S)

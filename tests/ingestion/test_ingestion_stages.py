@@ -1,3 +1,4 @@
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from ingestion.chunking import chunk_document
 from ingestion.cleaning import clean_pages, clean_text
 from ingestion.loader import LocalFolderConnector, hash_file
 from ingestion.models import ParsedPage, SourceDocument
+from ingestion import parsers
 from ingestion.parsers import parse
 
 SAMPLE_PDF = Path(__file__).parents[2] / "data" / "AcmeTech_Employee_Handbook.pdf"
@@ -104,3 +106,37 @@ def test_format_contexts_cites_source_and_page():
     assert format_contexts(docs) == (
         "[Source: handbook.pdf, page 4]\nLeave policy\n\n[Source: notes.md]\nNotes"
     )
+
+
+def test_untrusted_parse_matches_in_process_parse():
+    doc = SourceDocument("handbook.pdf", SAMPLE_PDF, "pdf", "h")
+    assert parsers.parse_untrusted(doc) == parse(doc)
+
+
+def test_untrusted_parse_times_out(tmp_path):
+    path = tmp_path / "a.txt"
+    path.write_text("hello")
+    with pytest.raises(ValueError, match="Took longer than"):
+        parsers.parse_untrusted(SourceDocument("a.txt", path, "txt", "h"), timeout_s=0.001)
+
+
+def test_untrusted_parse_reports_parser_errors(tmp_path):
+    path = tmp_path / "broken.pdf"
+    path.write_bytes(b"not a pdf")
+    with pytest.raises(ValueError):
+        parsers.parse_untrusted(SourceDocument("broken.pdf", path, "pdf", "h"))
+
+
+def test_rejects_docx_that_unpacks_too_large(tmp_path):
+    path = tmp_path / "big.docx"
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", "x" * 1000)
+    with patch.object(parsers, "MAX_DOCX_UNCOMPRESSED_BYTES", 100):
+        with pytest.raises(ValueError, match="Unpacks to more than"):
+            parse(SourceDocument("big.docx", path, "docx", "h"))
+
+
+def test_rejects_pdf_with_too_many_pages():
+    with patch.object(parsers, "MAX_PDF_PAGES", 1):
+        with pytest.raises(ValueError, match="More than 1 pages"):
+            parse(SourceDocument("handbook.pdf", SAMPLE_PDF, "pdf", "h"))

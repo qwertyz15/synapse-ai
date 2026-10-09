@@ -16,7 +16,7 @@ from ingestion.cleaning import clean_pages
 from ingestion.index import chroma_client
 from ingestion.loader import hash_file
 from ingestion.models import SourceDocument
-from ingestion.parsers import parse
+from ingestion.parsers import parse_untrusted
 
 ATTACHMENTS_COLLECTION = "chat_attachments"
 
@@ -53,7 +53,7 @@ def chunk_upload(
             file_type=path.suffix.lower().lstrip("."),
             content_hash=hash_file(path),
         )
-        chunks = chunk_document(doc, clean_pages(parse(doc)), chunk_size, chunk_overlap)
+        chunks = chunk_document(doc, clean_pages(parse_untrusted(doc)), chunk_size, chunk_overlap)
     if not chunks:
         raise ValueError("No readable text found")
     return chunks

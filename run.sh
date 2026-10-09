@@ -55,6 +55,7 @@ env_value() {
     cd frontend
     export AGENT_URL="http://localhost:$PORT"
     for key in AUTH_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET GITHUB_APP_SLUG WEB_SESSION_SECRET \
+        AUTH_ENABLED GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GOOGLE_REDIRECT_URI \
         RATE_LIMIT_CHATS_PER_HOUR RATE_LIMIT_CHATS_PER_MINUTE_GLOBAL RATE_LIMIT_UPLOADS_PER_HOUR; do
         export "$key=$(cd .. && env_value "$key")"
     done

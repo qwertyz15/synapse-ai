@@ -63,8 +63,9 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
   their own account with OAuth. Access is read-only unless they turn on **Allow changes**.
 - **Chat history**: past conversations grouped by date, with search. Deleting a chat also removes
   the files attached to it.
-- **No login needed**: each browser gets an anonymous identity. Secrets and GitHub tokens never
-  reach the browser, and tokens are never written to the chat database.
+- **Optional Google sign-in**: run it open (each browser gets an anonymous identity) or require a
+  Google account, with admins and open, invite-only or closed sign-ups ([setup](docs/Google_Sign_In.md)).
+  Secrets and GitHub tokens never reach the browser, and tokens are never written to the chat database.
 - **Agent service API**: streaming and non-streaming endpoints, chat history, a Python client, an
   [AG-UI](docs/AGUI.md) endpoint, and a legacy Streamlit app.
 - **Many model providers**: DeepSeek, OpenAI, Anthropic, Google, Groq, AWS Bedrock, Ollama,
@@ -117,6 +118,7 @@ likely to set:
 | `DEFAULT_MODEL` | The model new chats use, e.g. `deepseek-v4-flash` |
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `VOYAGE_API_KEY` | Document search: `openai` (uses `OPENAI_API_KEY`) or `voyage` |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_SLUG`, `WEB_SESSION_SECRET` | Connect GitHub; see [GitHub setup](docs/GitHub_MCP_Agent.md) |
+| `AUTH_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`, `SIGNUPS`, `ALLOWED_EMAILS` | Google sign-in, admins and who may join; see [Google sign-in](docs/Google_Sign_In.md) |
 | `AUTH_SECRET` | Bearer token for the agent service API; required whenever it listens beyond localhost, including Docker |
 | `RATE_LIMIT_CHATS_PER_HOUR`, `RATE_LIMIT_CHATS_PER_MINUTE_GLOBAL`, `RATE_LIMIT_UPLOADS_PER_HOUR` | Web UI usage limits per user (IPs get 3x); defaults 60, 120 and 20, `0` turns one off |
 | `OPENWEATHERMAP_API_KEY` | The weather tool |

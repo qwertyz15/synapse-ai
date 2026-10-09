@@ -51,6 +51,7 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
       dispatch({ type: "start" });
       markSent(attachments);
       stickRef.current = true;
+      const firstMessage = !urlSetRef.current;
       if (!urlSetRef.current) {
         urlSetRef.current = true;
         window.history.replaceState(null, "", `/chat/${agent}/${threadId}`);
@@ -86,6 +87,8 @@ export function ChatView({ agent, threadId, initialTurns = [], isNew = false }: 
         abortRef.current = null;
         setStreaming(false);
         refreshThreads();
+        // The service names a new chat in the background; pick the title up if it lands after the reply.
+        if (firstMessage) for (const ms of [3000, 10000]) window.setTimeout(refreshThreads, ms);
         composerRef.current?.focus();
       }
     },

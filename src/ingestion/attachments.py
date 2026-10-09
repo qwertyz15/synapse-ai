@@ -13,7 +13,7 @@ from langchain_core.embeddings import Embeddings
 
 from ingestion.chunking import chunk_document
 from ingestion.cleaning import clean_pages
-from ingestion.index import chroma_client
+from ingestion.index import add_chunks, chroma_client
 from ingestion.loader import hash_file
 from ingestion.models import SourceDocument
 from ingestion.parsers import parse_untrusted
@@ -74,7 +74,7 @@ def add_attachment(
     for chunk in chunks:
         chunk.metadata.update(thread_id=thread_id, user_id=user_id, scope="chat")
     store.delete(where=_scope(thread_id, user_id, name))
-    store.add_documents(chunks, ids=[chunk.id for chunk in chunks])
+    add_chunks(store, chunks)
     return len(chunks)
 
 

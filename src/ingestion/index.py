@@ -38,6 +38,16 @@ def open_vectorstore(db_path: str | Path, embeddings: Embeddings) -> Chroma:
     )
 
 
+# Chroma refuses inserts above its max batch size (5,461 on SQLite), which one large file can exceed.
+ADD_BATCH_SIZE = 1000
+
+
+def add_chunks(store: Chroma, chunks: list[Document]) -> None:
+    for start in range(0, len(chunks), ADD_BATCH_SIZE):
+        batch = chunks[start : start + ADD_BATCH_SIZE]
+        store.add_documents(batch, ids=[chunk.id for chunk in batch])
+
+
 def delete_document(store: Chroma, doc_id: str) -> None:
     store.delete(where={"doc_id": doc_id})
 
@@ -45,8 +55,7 @@ def delete_document(store: Chroma, doc_id: str) -> None:
 def replace_document_chunks(store: Chroma, doc_id: str, chunks: list[Document]) -> None:
     # Delete first: an edited document may produce fewer chunks, leaving stale ids behind.
     delete_document(store, doc_id)
-    if chunks:
-        store.add_documents(chunks, ids=[chunk.id for chunk in chunks])
+    add_chunks(store, chunks)
 
 
 def reassign_user(store: Chroma, from_user: str, to_user: str, keep: Collection[str] = ()) -> int:

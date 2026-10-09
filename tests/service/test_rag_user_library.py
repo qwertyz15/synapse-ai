@@ -90,3 +90,9 @@ def test_listing_includes_shared_library_as_read_only(client, rag_env):
     client.post("/rag/documents", files=[("files", ("handbook.txt", b"Shared handbook text."))])
     _upload(client, "u1", ("mine.txt", b"Mine."))
     assert _names(client, "u1") == [("mine.txt", False), ("handbook.txt", True)]
+
+
+def test_large_files_are_indexed_in_batches(client, rag_env):
+    text = b"word " * 250_000  # about 12,500 chunks of 100 characters, over Chroma's batch limit
+    body = _upload(client, "u1", ("big.txt", text)).json()
+    assert body["new"] == ["big.txt"] and body["chunks_written"] > 5461

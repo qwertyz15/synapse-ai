@@ -10,7 +10,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from ingestion.attachments import chunk_upload
-from ingestion.index import chroma_client
+from ingestion.index import add_chunks, chroma_client
 
 USER_LIBRARY_COLLECTION = "user_library"
 
@@ -37,7 +37,7 @@ def add_user_document(
     for chunk in chunks:
         chunk.metadata.update(user_id=user_id, scope="user")
     store.delete(where=_scope(user_id, name))
-    store.add_documents(chunks, ids=[chunk.id for chunk in chunks])
+    add_chunks(store, chunks)
     return len(chunks)
 
 

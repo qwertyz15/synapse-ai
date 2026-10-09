@@ -21,14 +21,19 @@ async def save_google_user(
     email: str,
     name: str | None,
     avatar_url: str | None,
+    plan: str = "free",
 ) -> User:
-    """Create the account on first sign-in, or refresh its profile and last login."""
-    user = existing or User(id=str(uuid4()), google_sub=google_sub, email=email)
+    """Create the account on first sign-in (on `plan`), or refresh its profile and last login."""
+    user = existing or User(id=str(uuid4()), google_sub=google_sub, email=email, plan=plan)
     if existing is None:
         session.add(user)
     user.google_sub, user.email = google_sub, email
     user.name, user.avatar_url, user.last_login_at = name, avatar_url, utcnow()
     return user
+
+
+async def get_user(session: AsyncSession, user_id: str) -> User | None:
+    return await session.get(User, user_id)
 
 
 async def move_anonymous_rows(session: AsyncSession, from_user: str, to_user: str) -> set[str]:

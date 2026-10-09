@@ -96,6 +96,13 @@ class Settings(BaseSettings):
     SIGNUPS: Literal["open", "invite", "closed"] = "open"
     ALLOWED_EMAILS: str = ""
 
+    # Plans for signed-in accounts. Admins (ADMIN_EMAILS) are always unlimited; new accounts start on
+    # DEFAULT_PLAN. Free accounts get FREE_MESSAGES_PER_DAY messages a day (UTC) on the models in
+    # FREE_MODELS (comma-separated; empty means every available model).
+    DEFAULT_PLAN: Literal["free", "unlimited"] = "free"
+    FREE_MESSAGES_PER_DAY: int = 20
+    FREE_MODELS: str = ""
+
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None
     ANTHROPIC_API_KEY: SecretStr | None = None
@@ -296,6 +303,9 @@ class Settings(BaseSettings):
 
     def allowed_emails(self) -> set[str]:
         return _email_list(self.ALLOWED_EMAILS)
+
+    def free_models(self) -> list[str]:
+        return [m.strip() for m in self.FREE_MODELS.split(",") if m.strip()]
 
     def is_local_only(self) -> bool:
         if self.HOST == "localhost":

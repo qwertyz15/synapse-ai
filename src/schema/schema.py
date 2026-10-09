@@ -134,6 +134,15 @@ class Account(BaseModel):
     is_admin: bool = False
 
 
+class PlanInfo(BaseModel):
+    """What an account's plan allows today."""
+
+    plan: Literal["admin", "unlimited", "free"]
+    messages_today: int
+    daily_limit: int | None = Field(description="Messages allowed per UTC day; null for no limit.")
+    models: list[str] | None = Field(description="Models the plan allows; null for every model.")
+
+
 class ThreadRename(BaseModel):
     title: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)

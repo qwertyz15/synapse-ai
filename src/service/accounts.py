@@ -77,7 +77,13 @@ async def sign_in(profile: GoogleSignIn) -> Account:
                 status_code=403, detail="This app is invite-only, and your email isn't on the list."
             )
         user = await save_google_user(
-            session, existing, profile.google_sub, email, profile.name, profile.avatar_url
+            session,
+            existing,
+            profile.google_sub,
+            email,
+            profile.name,
+            profile.avatar_url,
+            settings.DEFAULT_PLAN,
         )
         result = account(user)
     if profile.anonymous_user_id and profile.anonymous_user_id != result.id:

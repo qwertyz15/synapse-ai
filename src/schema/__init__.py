@@ -12,6 +12,7 @@ from schema.schema import (
     FeedbackResponse,
     GoogleSignIn,
     IngestionResult,
+    PlanInfo,
     RagDocument,
     RagDocuments,
     ServiceMetadata,
@@ -27,6 +28,7 @@ from schema.schema import (
 __all__ = [
     "Account",
     "GoogleSignIn",
+    "PlanInfo",
     "AgentInfo",
     "AllModelEnum",
     "UserInput",

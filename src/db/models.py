@@ -43,8 +43,21 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True)
     name: Mapped[str | None] = mapped_column(String(200))
     avatar_url: Mapped[str | None] = mapped_column(String(1024))
+    plan: Mapped[str] = mapped_column(String(16), default="free")
+    # Overrides the plan's daily message limit for this account when set.
+    daily_message_limit: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     last_login_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class DailyUsage(Base):
+    """Messages an account sent on one UTC day."""
+
+    __tablename__ = "daily_usage"
+
+    user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)
+    messages: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Chat(Base):

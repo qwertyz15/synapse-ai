@@ -53,6 +53,8 @@ from schema import (
 )
 from service.accounts import router as accounts_router
 from service.agui import router as agui_router
+from service.plans import charge_message
+from service.plans import router as plans_router
 from service.rag import remove_thread_attachments
 from service.rag import router as rag_router
 from service.threads import thread_owner
@@ -141,6 +143,7 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 router.include_router(agui_router)
 router.include_router(rag_router)
 router.include_router(accounts_router)
+router.include_router(plans_router)
 
 
 @router.get("/info")
@@ -287,6 +290,7 @@ async def invoke(
     # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
+    await charge_message(user_input)
     await _claim_thread(user_input, agent_id)
     context = await _run_context(agent_id, github)
     agent: AgentGraph = get_agent(agent_id)
@@ -470,6 +474,7 @@ async def stream(
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
+    await charge_message(user_input)
     await _claim_thread(user_input, agent_id)
     return StreamingResponse(
         message_generator(user_input, agent_id, github),

@@ -64,7 +64,8 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
 - **Chat history**: past conversations grouped by date, with search. Deleting a chat also removes
   the files attached to it.
 - **Optional Google sign-in**: run it open (each browser gets an anonymous identity) or require a
-  Google account, with admins and open, invite-only or closed sign-ups ([setup](docs/Google_Sign_In.md)).
+  Google account, with admins, open, invite-only or closed sign-ups, free and unlimited plans, an
+  admin page, and users' own API keys ([setup](docs/Google_Sign_In.md)).
   Secrets and GitHub tokens never reach the browser, and tokens are never written to the chat database.
 - **Agent service API**: streaming and non-streaming endpoints, chat history, a Python client, an
   [AG-UI](docs/AGUI.md) endpoint, and a legacy Streamlit app.

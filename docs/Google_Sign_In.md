@@ -64,9 +64,19 @@ FREE_LIBRARY_FILES=10
 
 Users see their plan and today's usage in the sidebar's account menu, the model menu only lists
 what their plan allows, and a clear message appears when the day's messages are used up. Requests
-without an account (sign-in off) aren't limited. An admin page for changing a user's plan comes
-next; until then a plan can be changed in the `users` table (`plan` = `free` or `unlimited`,
-`daily_message_limit` to give one account its own daily limit).
+without an account (sign-in off) aren't limited.
+
+## Admin page
+
+Admins open **Admin** from the account menu to see every account with its plan, today's usage,
+daily limit, saved key providers and last activity, and to:
+
+- switch an account between **Free** and **Unlimited**,
+- give one account its own **daily limit** (leave it empty for the plan's default),
+- **block** or unblock an account: blocked accounts can't sign in, chat or upload.
+
+Changes apply immediately. Admins come from `ADMIN_EMAILS`, which is checked on every request, so
+they can't be blocked or demoted from the page; edit `ADMIN_EMAILS` and restart instead.
 
 ## Your own API keys
 

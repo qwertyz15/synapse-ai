@@ -101,6 +101,10 @@ class RagDocument(BaseModel):
     file_type: str = Field(examples=["pdf"])
     chunk_count: int = Field(examples=[12])
     ingested_at: str = Field(description="ISO 8601 timestamp of the last ingestion.")
+    shared: bool = Field(
+        default=False,
+        description="True for the shared library (managed from the data folder), false for the user's own.",
+    )
 
 
 class RagDocuments(BaseModel):

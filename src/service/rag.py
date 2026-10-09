@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from core import settings
 from core.embeddings import get_embeddings
 from db import chats as chat_rows
+from db import user_documents as user_rows
 from db.engine import async_session_scope
 from ingestion import IngestionReport, run_ingestion
 from ingestion.attachments import (
@@ -24,6 +25,7 @@ from ingestion.attachments import (
 )
 from ingestion.loader import SUPPORTED_EXTENSIONS
 from ingestion.manifest import list_indexed_documents
+from ingestion.user_library import add_user_document, delete_user_document, open_user_library
 from schema import (
     AttachmentResult,
     ChatAttachment,
@@ -76,10 +78,10 @@ def _result(report: IngestionReport, rejected: dict[str, str] | None = None) -> 
 
 @router.get("/documents")
 def list_documents() -> RagDocuments:
-    """List the documents currently indexed for the RAG assistant."""
+    """List the documents in the shared library (the data folder)."""
     return RagDocuments(
         documents=[
-            RagDocument(doc_id=d, file_type=t, chunk_count=c, ingested_at=at)
+            RagDocument(doc_id=d, file_type=t, chunk_count=c, ingested_at=at, shared=True)
             for d, t, c, at in list_indexed_documents(settings.CHROMA_DB_PATH)
         ]
     )
@@ -137,6 +139,76 @@ async def delete_document(doc_id: str) -> IngestionResult:
     elif doc_id not in {d.doc_id for d in list_documents().documents}:
         raise HTTPException(status_code=404, detail="Document not found")
     return _result(await _ingest())
+
+
+async def _user_documents(user_id: str) -> list[RagDocument]:
+    async with async_session_scope() as session:
+        rows = await user_rows.list_user_documents(session, user_id)
+    return [
+        RagDocument(
+            doc_id=r.name,
+            file_type=r.file_type,
+            chunk_count=r.chunk_count,
+            ingested_at=r.created_at.isoformat(),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/my-documents")
+async def list_my_documents(user_id: str) -> RagDocuments:
+    """List a user's own library, followed by the shared library they can search but not change."""
+    return RagDocuments(documents=[*await _user_documents(user_id), *list_documents().documents])
+
+
+@router.post("/my-documents")
+async def upload_my_documents(user_id: str, files: list[UploadFile]) -> IngestionResult:
+    """Add files to a user's own library, searchable from all of their chats and nobody else's."""
+    accepted, rejected = await _read_uploads(files)
+    result = IngestionResult(rejected=rejected)
+    if not accepted:
+        return result
+    try:
+        embeddings = get_embeddings()
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    store = open_user_library(settings.CHROMA_DB_PATH, embeddings)
+    async with _ingestion_lock:
+        for name, content in accepted.items():
+            try:
+                chunks = await run_in_threadpool(
+                    add_user_document,
+                    store,
+                    user_id=user_id,
+                    name=name,
+                    content=content,
+                    chunk_size=settings.RAG_CHUNK_SIZE,
+                    chunk_overlap=settings.RAG_CHUNK_OVERLAP,
+                )
+            except Exception as e:
+                logger.exception("Failed to add %s to a user library", name)
+                result.failed[name] = f"{type(e).__name__}: {e}"
+                continue
+            async with async_session_scope() as session:
+                replaced = await user_rows.upsert_user_document(
+                    session, user_id, name, Path(name).suffix.lstrip(".").lower(), chunks
+                )
+            (result.updated if replaced else result.new).append(name)
+            result.chunks_written += chunks
+    return result
+
+
+@router.delete("/my-documents/{name:path}")
+async def delete_my_document(name: str, user_id: str) -> IngestionResult:
+    """Remove a file from a user's own library."""
+    store = open_user_library(settings.CHROMA_DB_PATH)
+    async with _ingestion_lock:
+        removed_chunks = await run_in_threadpool(delete_user_document, store, user_id, name)
+    async with async_session_scope() as session:
+        removed_row = await user_rows.delete_user_document(session, user_id, name)
+    if not removed_chunks and not removed_row:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return IngestionResult(deleted=[name])
 
 
 async def _attachments(thread_id: str, user_id: str) -> list[ChatAttachment]:

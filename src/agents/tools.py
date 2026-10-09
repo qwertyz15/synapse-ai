@@ -11,6 +11,7 @@ from core import settings
 from core.embeddings import get_embeddings
 from ingestion.attachments import open_attachment_store, search_attachments
 from ingestion.index import open_vectorstore
+from ingestion.user_library import open_user_library, search_user_library
 
 
 def calculator_func(expression: str) -> str:
@@ -82,14 +83,22 @@ def _chat_documents(query: str, config: RunnableConfig | None) -> list[Document]
     return search_attachments(store, query, thread_id, user_id)
 
 
+def _user_library_documents(query: str, config: RunnableConfig | None) -> list[Document]:
+    user_id = (config or {}).get("configurable", {}).get("user_id")
+    if not user_id or not os.path.isdir(settings.CHROMA_DB_PATH):
+        return []
+    store = open_user_library(settings.CHROMA_DB_PATH, get_embeddings())
+    return search_user_library(store, query, user_id)
+
+
 def database_search_func(query: str, config: RunnableConfig) -> str:
     """Searches the documents the user has uploaded (PDF, Word, text, Markdown).
 
-    Covers files attached to this chat and the shared document library.
+    Covers files attached to this chat, the user's own library and the shared document library.
     Use for questions about the user's own files, organization, policies or projects.
     Returns the most relevant passages, each labeled with its source file and page.
     """
-    documents = _chat_documents(query, config)
+    documents = _chat_documents(query, config) + _user_library_documents(query, config)
     try:
         documents += load_chroma_db().invoke(query)
     except FileNotFoundError:

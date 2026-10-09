@@ -62,6 +62,20 @@ class ChatAttachment(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
+class UserDocument(Base):
+    """A file in one user's private library; its chunks live in the user_library Chroma collection."""
+
+    __tablename__ = "user_documents"
+    __table_args__ = (UniqueConstraint("user_id", "name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    file_type: Mapped[str] = mapped_column(String(16))
+    chunk_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
 class LibraryDocument(Base):
     """A library file that has been indexed; its chunks live in the rag_documents collection."""
 

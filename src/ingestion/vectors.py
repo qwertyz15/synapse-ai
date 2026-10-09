@@ -18,6 +18,7 @@ from langchain_core.embeddings import Embeddings
 from qdrant_client import QdrantClient, models
 
 from core import settings
+from ingestion.sparse import document_vector, query_vector
 
 # Chunks are embedded and written this many at a time, which bounds memory for large files.
 WRITE_BATCH = 128
@@ -25,6 +26,13 @@ SCROLL_PAGE = 256
 # Payload fields searches and deletes filter on.
 INDEXED_FIELDS = ("doc_id", "source", "user_id", "thread_id")
 _TEXT, _ID = "page_content", "chunk_id"
+# The sparse (keyword) vector next to the unnamed dense one; Qdrant applies IDF to it.
+SPARSE = "bm25"
+_FUSIONS = {"dbsf": models.Fusion.DBSF, "rrf": models.Fusion.RRF}
+# Each side of a hybrid search fetches this many times the results asked for, before fusion.
+CANDIDATE_FACTOR = 4
+# Collections checked (and, if needed, upgraded) for keyword vectors in this process.
+_hybrid_ready: set[tuple[str, str]] = set()
 
 _clients: dict[str, QdrantClient] = {}
 _clients_lock = threading.Lock()
@@ -95,19 +103,74 @@ class VectorStore:
         with self._guard():
             return self.client.collection_exists(self.collection)
 
-    def _create(self, size: int) -> None:
+    def _create(self, size: int, name: str | None = None) -> None:
+        name = name or self.collection
         self.client.create_collection(
-            self.collection,
+            name,
             vectors_config=models.VectorParams(
                 size=size, distance=models.Distance.COSINE, on_disk=True
             ),
+            sparse_vectors_config={
+                SPARSE: models.SparseVectorParams(
+                    modifier=models.Modifier.IDF, index=models.SparseIndexParams(on_disk=True)
+                )
+            },
             on_disk_payload=True,
             hnsw_config=models.HnswConfigDiff(on_disk=True),
         )
         for field in INDEXED_FIELDS:
             self.client.create_payload_index(
-                self.collection, field, field_schema=models.PayloadSchemaType.KEYWORD
+                name, field, field_schema=models.PayloadSchemaType.KEYWORD
             )
+
+    def _has_sparse(self, name: str) -> bool:
+        params = self.client.get_collection(name).config.params
+        return SPARSE in (params.sparse_vectors or {})
+
+    def _ready(self) -> bool:
+        """Whether the collection exists, upgrading one made before hybrid search on first use."""
+        key = (str(id(self.client)), self.collection)
+        if not self.client.collection_exists(self.collection):
+            return False
+        if key not in _hybrid_ready:
+            if not self._has_sparse(self.collection):
+                self._upgrade()
+            _hybrid_ready.add(key)
+        return True
+
+    def _upgrade(self) -> None:
+        """Rebuild the collection with keyword vectors, keeping its dense vectors (no re-embedding).
+
+        Qdrant can't add a vector type to an existing collection, so points go to a temporary
+        collection and back.
+        """
+        temp = f"{self.collection}__upgrade"
+        if self.client.collection_exists(temp):
+            self.client.delete_collection(temp)
+        size = self.client.get_collection(self.collection).config.params.vectors.size  # type: ignore[union-attr]
+        self._create(size, temp)
+        self._copy(self.collection, temp)
+        self.client.delete_collection(self.collection)
+        self._create(size)
+        self._copy(temp, self.collection)
+        self.client.delete_collection(temp)
+
+    def _copy(self, source: str, target: str) -> None:
+        offset = None
+        while True:
+            points, offset = self.client.scroll(
+                source, limit=SCROLL_PAGE, offset=offset, with_payload=True, with_vectors=True
+            )
+            if points:
+                self.client.upsert(
+                    target,
+                    points=[
+                        _point(p.id, _dense(p.vector), p.payload or {})
+                        for p in points  # type: ignore[arg-type]
+                    ],
+                )
+            if offset is None:
+                return
 
     def add(self, chunks: list[Document]) -> None:
         if not chunks:
@@ -125,16 +188,13 @@ class VectorStore:
         if not chunks:
             return
         points = [
-            models.PointStruct(
-                id=_point_id(str(c.id)),
-                vector=list(vector),
-                payload={**c.metadata, _TEXT: c.page_content, _ID: c.id},
-            )
-            for c, vector in zip(chunks, vectors)
+            _point(_point_id(str(c.id)), list(v), {**c.metadata, _TEXT: c.page_content, _ID: c.id})
+            for c, v in zip(chunks, vectors)
         ]
         with self._guard():
-            if not self.client.collection_exists(self.collection):
-                self._create(len(points[0].vector))  # type: ignore[arg-type]
+            if not self._ready():
+                self._create(len(vectors[0]))
+                _hybrid_ready.add((str(id(self.client)), self.collection))
             self.client.upsert(self.collection, points=points)
 
     def count(self, match: dict[str, Any] | None = None) -> int:
@@ -150,20 +210,49 @@ class VectorStore:
                     self.collection, points_selector=models.FilterSelector(filter=_filter(match))
                 )
 
-    def search(self, query: str, k: int = 5, match: dict[str, Any] | None = None) -> list[Document]:
+    def search(
+        self,
+        query: str,
+        k: int = 5,
+        match: dict[str, Any] | None = None,
+        candidates: int | None = None,
+    ) -> list[Document]:
+        """The k best chunks for `query`, best first.
+
+        With HYBRID_SEARCH (the default), meaning (dense vectors) and keywords (BM25) are searched
+        together and merged by HYBRID_FUSION. `candidates` sets how many each side considers
+        (default k * CANDIDATE_FACTOR); a reranker can ask for a larger k and reorder it.
+        """
         if self.embeddings is None:
             raise ValueError("Searching needs embeddings")
-        if not self.exists():
-            return []
-        vector = self.embeddings.embed_query(query)
         with self._guard():
-            points = self.client.query_points(
-                self.collection,
-                query=vector,
-                query_filter=_filter(match),
-                limit=k,
-                with_payload=True,
-            ).points
+            if not self._ready():
+                return []
+        vector = self.embeddings.embed_query(query)
+        selected = _filter(match)
+        indices, values = query_vector(query) if settings.HYBRID_SEARCH else ([], [])
+        with self._guard():
+            if not indices:
+                points = self.client.query_points(
+                    self.collection, query=vector, query_filter=selected, limit=k, with_payload=True
+                ).points
+            else:
+                pool = max(candidates or k * CANDIDATE_FACTOR, k)
+                points = self.client.query_points(
+                    self.collection,
+                    prefetch=[
+                        models.Prefetch(query=vector, filter=selected, limit=pool),
+                        models.Prefetch(
+                            query=models.SparseVector(indices=indices, values=values),
+                            using=SPARSE,
+                            filter=selected,
+                            limit=pool,
+                        ),
+                    ],
+                    query=models.FusionQuery(fusion=_FUSIONS[settings.HYBRID_FUSION]),
+                    limit=k,
+                    with_payload=True,
+                ).points
         return [_document(p.payload or {}) for p in points]
 
     def metadatas(self, match: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -213,3 +302,17 @@ class VectorStore:
 def _document(payload: dict[str, Any]) -> Document:
     metadata = {k: v for k, v in payload.items() if k not in (_TEXT, _ID)}
     return Document(id=payload.get(_ID), page_content=payload.get(_TEXT, ""), metadata=metadata)
+
+
+def _point(point_id: Any, dense: list[float], payload: dict[str, Any]) -> models.PointStruct:
+    """A chunk with its dense vector and, when its text has any keywords, its BM25 vector."""
+    vector: dict[str, Any] = {"": dense}
+    indices, values = document_vector(str(payload.get(_TEXT, "")))
+    if indices:
+        vector[SPARSE] = models.SparseVector(indices=indices, values=values)
+    return models.PointStruct(id=point_id, vector=vector, payload=payload)
+
+
+def _dense(vector: Any) -> list[float]:
+    # Points read back come as a plain list (old collections) or a dict of named vectors.
+    return list(vector[""] if isinstance(vector, dict) else vector)

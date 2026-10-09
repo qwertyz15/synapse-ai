@@ -145,6 +145,12 @@ class Settings(BaseSettings):
     QDRANT_URL: str | None = None
     QDRANT_API_KEY: SecretStr | None = None
     QDRANT_PATH: str = "./qdrant_data"
+    # Search documents by meaning and by keywords together (BM25, merged with Reciprocal Rank Fusion);
+    # false searches by meaning only.
+    HYBRID_SEARCH: bool = True
+    # How the two rankings merge: "dbsf" (normalized scores, so a clear keyword match like an
+    # invoice number wins) or "rrf" (rank positions only, Qdrant's usual default).
+    HYBRID_FUSION: Literal["dbsf", "rrf"] = "dbsf"
 
     # Background indexing. With REDIS_URL set, uploads become jobs for the Celery worker; without
     # it they're indexed inline in the request. Uploaded files wait in UPLOADS_DIR until indexed.

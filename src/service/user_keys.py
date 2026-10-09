@@ -27,6 +27,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 VERIFY_TIMEOUT_S = 10
 
+PROVIDER_NAMES = {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "deepseek": "DeepSeek",
+    "google": "Google",
+    "groq": "Groq",
+    "openrouter": "OpenRouter",
+}
+
 # One cheap, free request per provider that fails with 401/403 for a bad key.
 _CHECKS: dict[str, tuple[str, str, str]] = {
     "openai": ("https://api.openai.com/v1/models", "Authorization", "Bearer {}"),
@@ -132,7 +141,8 @@ async def save_key(provider: str, user_id: str, body: UserKeyInput) -> UserKey:
     verified = await verify_key(provider, api_key)
     if verified is False:
         raise HTTPException(
-            status_code=400, detail=f"{provider} rejected this key. Check it and try again."
+            status_code=400,
+            detail=f"{PROVIDER_NAMES[provider]} rejected this key. Check it and try again.",
         )
     async with async_session_scope() as session:
         row = await session.get(UserApiKey, (user_id, provider))

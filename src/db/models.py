@@ -50,6 +50,18 @@ class User(Base):
     last_login_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
 
+class UserApiKey(Base):
+    """An account's own key for one model provider, encrypted with USER_KEYS_SECRET."""
+
+    __tablename__ = "user_api_keys"
+
+    user_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), primary_key=True)
+    encrypted_key: Mapped[str] = mapped_column(Text)
+    last4: Mapped[str] = mapped_column(String(4))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
 class DailyUsage(Base):
     """Messages an account sent on one UTC day."""
 

@@ -59,6 +59,7 @@ from service.rag import remove_thread_attachments
 from service.rag import router as rag_router
 from service.threads import thread_owner
 from service.titles import name_chat_later
+from service.user_keys import router as user_keys_router
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
@@ -144,6 +145,7 @@ router.include_router(agui_router)
 router.include_router(rag_router)
 router.include_router(accounts_router)
 router.include_router(plans_router)
+router.include_router(user_keys_router)
 
 
 @router.get("/info")

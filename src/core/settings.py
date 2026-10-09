@@ -106,6 +106,9 @@ class Settings(BaseSettings):
     FREE_MAX_FILE_MB: int = 5
     FREE_LIBRARY_FILES: int = 10
 
+    # Encrypts API keys users save for themselves; the feature is off until this is set.
+    USER_KEYS_SECRET: SecretStr | None = None
+
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None
     ANTHROPIC_API_KEY: SecretStr | None = None

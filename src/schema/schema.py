@@ -149,6 +149,27 @@ class PlanInfo(BaseModel):
     )
 
 
+class UserKeyInput(BaseModel):
+    api_key: str = Field(min_length=8, max_length=512)
+
+
+class UserKey(BaseModel):
+    """A saved key, shown only by its last characters."""
+
+    provider: str
+    last4: str
+    added_at: datetime
+    verified: bool = Field(
+        default=True, description="False when the provider couldn't be reached to check the key."
+    )
+
+
+class UserKeys(BaseModel):
+    enabled: bool = Field(description="Whether this server lets users save their own keys.")
+    providers: list[str] = Field(description="Providers a key can be saved for.")
+    keys: list[UserKey]
+
+
 class ThreadRename(BaseModel):
     title: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)

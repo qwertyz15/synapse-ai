@@ -1,22 +1,66 @@
 #!/usr/bin/env bash
-# Start the agent service and the web UI together; Ctrl+C (or either one exiting) stops everything.
-# Usage: ./run.sh [--ingest] [--streamlit]
-#   --ingest     index ./data for document search before starting
-#   --streamlit  also start the legacy Streamlit app on :8501
+# Run Synapse locally (agent service + web UI), or manage the Docker setup. See ./run.sh --help.
 set -euo pipefail
 
 cd "$(dirname "$0")"
+
+usage() {
+    cat <<'USAGE'
+Usage: ./run.sh [options]            run locally: agent service + web UI (Ctrl+C stops both)
+       ./run.sh --docker <command>   manage the Docker setup instead
+
+Local options:
+  --ingest       index the files in ./data into the shared library before starting
+  --streamlit    also start the legacy Streamlit app on :8501
+  -h, --help     show this help
+  Ports: PORT (agent service, default 8080) and WEB_PORT (web UI, default 3000),
+  e.g. PORT=8090 WEB_PORT=3001 ./run.sh
+
+Docker commands:
+  up             build and start everything in the background (http://localhost:3000)
+  down           stop everything (data stays in Docker volumes)
+  restart [svc]  restart all services, or one (e.g. worker)
+  logs [svc]     follow logs, of everything or one service (e.g. worker, agent_service)
+  ps             show the status of each service
+  build          rebuild the images
+  watch          development mode: rebuild or sync services when code changes
+
+Background worker without Docker (needs REDIS_URL and QDRANT_URL in .env):
+  cd src && uv run celery -A worker worker -Q ingestion
+
+More commands: make help (if make is installed). Setup guide: README.md, "Getting started".
+USAGE
+}
+
+docker_command() {
+    command -v docker >/dev/null || { echo "Docker is required for --docker." >&2; exit 1; }
+    local cmd="${1:-}"
+    shift || true
+    case "$cmd" in
+        up) docker compose up -d --build --wait && echo "Synapse is running: http://localhost:3000" ;;
+        down) docker compose down ;;
+        restart) docker compose restart "$@" ;;
+        logs) docker compose logs -f --tail=100 "$@" ;;
+        ps) docker compose ps ;;
+        build) docker compose build "$@" ;;
+        watch) docker compose watch ;;
+        *) echo "Unknown or missing Docker command: '$cmd'" >&2; echo >&2; usage >&2; exit 2 ;;
+    esac
+}
 
 PORT="${PORT:-8080}"
 WEB_PORT="${WEB_PORT:-3000}"
 INGEST=false
 STREAMLIT=false
-for arg in "$@"; do
-    case "$arg" in
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h | --help) usage; exit 0 ;;
+        --docker) shift; docker_command "$@"; exit $? ;;
         --ingest) INGEST=true ;;
         --streamlit) STREAMLIT=true ;;
-        *) echo "Unknown option: $arg" >&2; exit 2 ;;
+        *) echo "Unknown option: $1 (see ./run.sh --help)" >&2; exit 2 ;;
     esac
+    shift
 done
 
 command -v npm >/dev/null || { echo "Node.js (npm) is required for the web UI." >&2; exit 1; }

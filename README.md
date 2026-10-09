@@ -195,14 +195,14 @@ run.sh           start everything locally
 ## Docker
 
 ```sh
-cp .env.example .env    # add your API keys and AUTH_SECRET (openssl rand -hex 32)
+cp .env.example .env    # add API keys, AUTH_SECRET and POSTGRES_PASSWORD (openssl rand -hex 32)
 docker compose watch
 ```
 
 This starts PostgreSQL, the agent service (port 8080), the web UI (<http://localhost:3000>) and the
 Streamlit app (<http://localhost:8501>), and rebuilds or syncs them when you change code. The agent
-service and Streamlit are only reachable from this machine, and the service won't start without
-`AUTH_SECRET`. After
+service, Streamlit and PostgreSQL are only reachable from this machine, and Compose won't start
+without `AUTH_SECRET` and `POSTGRES_PASSWORD`. After
 changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `docker compose up --build`.
 
 ## API and Python client

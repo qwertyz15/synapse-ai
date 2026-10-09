@@ -53,6 +53,9 @@ export const getHistory = (agent: string, threadId: string) =>
 export const getThreads = (agent: string, limit = 30) =>
   request<{ threads: ThreadInfo[] }>(`${agent}/threads?limit=${limit}`).then((r) => r.threads);
 
+export const renameThread = (agent: string, threadId: string, title: string) =>
+  request<ThreadInfo>(`${agent}/threads/${encodeURIComponent(threadId)}`, { ...json({ title }), method: "PATCH" });
+
 export const deleteThread = (agent: string, threadId: string) =>
   request<{ thread_id: string; attachments_removed: number }>(`${agent}/threads/${encodeURIComponent(threadId)}`, {
     method: "DELETE",

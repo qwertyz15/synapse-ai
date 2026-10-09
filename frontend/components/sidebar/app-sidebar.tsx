@@ -6,6 +6,7 @@ import {
   MonitorIcon,
   MoonIcon,
   PanelLeftIcon,
+  PencilIcon,
   SearchIcon,
   SquarePenIcon,
   SunIcon,
@@ -42,7 +43,7 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { agentLabel } from "@/lib/agents";
-import { deleteThread } from "@/lib/api";
+import { deleteThread, renameThread } from "@/lib/api";
 import type { ThreadInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +111,15 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     } finally {
       setDeleting(false);
       setPendingDelete(null);
+    }
+  };
+
+  const rename = async (thread: ThreadInfo, title: string) => {
+    try {
+      await renameThread(thread.agent_id, thread.thread_id, title);
+      refreshThreads();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't rename the chat");
     }
   };
 
@@ -181,6 +191,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                     thread={t}
                     active={pathname === `/chat/${t.agent_id}/${t.thread_id}`}
                     onNavigate={onNavigate}
+                    onRename={(title) => rename(t, title)}
                     onDelete={() => setPendingDelete(t)}
                   />
                 ))}
@@ -274,14 +285,57 @@ function ThreadRow({
   thread,
   active,
   onNavigate,
+  onRename,
   onDelete,
 }: {
   thread: ThreadInfo;
   active: boolean;
   onNavigate?: () => void;
+  onRename: (title: string) => Promise<void>;
   onDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const startEditing = () => {
+    setDraft(thread.title ?? "");
+    setEditing(true);
+  };
+
+  const finishEditing = (save: boolean) => {
+    if (!editing) return;
+    setEditing(false);
+    const title = draft.trim();
+    if (save && title && title !== thread.title) onRename(title.slice(0, 200));
+  };
+
+  if (editing) {
+    return (
+      <li>
+        <input
+          autoFocus
+          value={draft}
+          maxLength={200}
+          aria-label="Chat title"
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          onBlur={() => finishEditing(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              finishEditing(true);
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              finishEditing(false);
+            }
+          }}
+          className="h-9 w-full rounded-lg bg-sidebar-accent px-2.5 text-sm ring-1 ring-ring outline-none"
+        />
+      </li>
+    );
+  }
+
   return (
     <li className="group/row relative">
       <Link
@@ -310,6 +364,9 @@ function ThreadRow({
         <DropdownMenuContent align="start" className="w-44">
           <DropdownMenuItem disabled className="text-xs">
             {agentLabel(thread.agent_id)}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={startEditing}>
+            <PencilIcon /> Rename
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onClick={onDelete}>
             <Trash2Icon /> Delete

@@ -20,6 +20,7 @@ const ROUTES: Route[] = [
   { method: "POST", pattern: new RegExp(`^${AGENT}/history$`), userId: "body" },
   { method: "GET", pattern: new RegExp(`^${AGENT}/threads$`), userId: "query" },
   { method: "GET", pattern: /^chats$/, userId: "query" },
+  { method: "PATCH", pattern: new RegExp(`^${AGENT}/threads/[^/]+$`), userId: "query" },
   { method: "DELETE", pattern: new RegExp(`^${AGENT}/threads/[^/]+$`), userId: "query" },
   { method: "POST", pattern: /^feedback$/ },
   { method: "GET", pattern: /^rag\/my-documents$/, userId: "query" },
@@ -95,7 +96,7 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   let body: BodyInit | undefined;
   let wantsGithub = false;
   let githubWrite = false;
-  if (req.method === "POST") {
+  if (req.method === "POST" || req.method === "PATCH") {
     const contentType = req.headers.get("content-type") ?? "";
     headers.set("Content-Type", contentType);
     const raw = await readLimited(req, maxBytes);
@@ -151,4 +152,4 @@ async function forward(req: NextRequest, ctx: RouteContext<"/api/agent/[...path]
   return res;
 }
 
-export { forward as GET, forward as POST, forward as DELETE };
+export { forward as GET, forward as POST, forward as PATCH, forward as DELETE };

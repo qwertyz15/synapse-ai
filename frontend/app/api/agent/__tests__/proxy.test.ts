@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-import { DELETE, GET, POST } from "../[...path]/route";
+import { DELETE, GET, PATCH, POST } from "../[...path]/route";
 import { SESSION_COOKIE, githubConfig, seal, type GithubSession } from "@/lib/server/github-session";
 
 type Sent = { url: string; headers: Headers; body: Record<string, unknown> };
@@ -135,6 +135,29 @@ it("refuses oversized requests without forwarding them", async () => {
   const res = await POST(req, { params: Promise.resolve({ path: ["chatbot", "stream"] }) });
   expect(res.status).toBe(413);
   expect(sent).toHaveLength(0);
+});
+
+it("renames chats as the browser's user", async () => {
+  const calls: { url: string; body: string }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), body: new TextDecoder().decode(init?.body as Uint8Array) });
+      return Response.json({ thread_id: "t1", title: "New name" });
+    }),
+  );
+  const req = new NextRequest("http://localhost:3000/api/agent/chatbot/threads/t1?user_id=spoofed", {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title: "New name" }),
+  });
+  req.cookies.set("uid", "browser-1");
+  const res = await PATCH(req, { params: Promise.resolve({ path: ["chatbot", "threads", "t1"] }) });
+  expect(res.status).toBe(200);
+  const url = new URL(calls[0].url);
+  expect(url.pathname).toBe("/chatbot/threads/t1");
+  expect(url.searchParams.get("user_id")).toBe("browser-1");
+  expect(JSON.parse(calls[0].body)).toEqual({ title: "New name" });
 });
 
 it("scopes the document library to the browser's user", async () => {

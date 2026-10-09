@@ -65,6 +65,17 @@ async def list_chats(
     return (await session.scalars(query)).all()
 
 
+async def rename_chat(
+    session: AsyncSession, thread_id: str, user_id: str, agent_id: str, title: str
+) -> Chat | None:
+    """Set a chat's title; None if the chat doesn't exist or belongs to someone else."""
+    chat = await session.get(Chat, thread_id)
+    if chat is None or (chat.user_id, chat.agent_id) != (user_id, agent_id):
+        return None
+    chat.title = title
+    return chat
+
+
 async def delete_chat(session: AsyncSession, thread_id: str) -> None:
     await session.execute(delete(ChatAttachment).where(ChatAttachment.thread_id == thread_id))
     await session.execute(delete(Chat).where(Chat.thread_id == thread_id))

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Literal, NotRequired
+from typing import Annotated, Any, Literal, NotRequired
 
-from pydantic import BaseModel, Field, SerializeAsAny
+from pydantic import BaseModel, Field, SerializeAsAny, StringConstraints
 from typing_extensions import TypedDict
 
 from schema.models import AllModelEnum, AnthropicModelName, OpenAIModelName
@@ -109,6 +109,12 @@ class RagDocument(BaseModel):
 
 class RagDocuments(BaseModel):
     documents: list[RagDocument]
+
+
+class ThreadRename(BaseModel):
+    title: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)
+    ] = Field(description="New title for the chat.", examples=["Trip planning"])
 
 
 class ThreadDeleted(BaseModel):

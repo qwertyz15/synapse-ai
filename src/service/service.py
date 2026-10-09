@@ -33,7 +33,7 @@ from agents.github_mcp_agent.github_mcp_agent import github_mcp_agent
 from agents.github_tools import AgentContext, github_tools
 from core import settings
 from db.backfill import run_backfills
-from db.chats import ChatAccessError, claim_chat, delete_chat, get_chat, list_chats
+from db.chats import ChatAccessError, claim_chat, delete_chat, get_chat, list_chats, rename_chat
 from db.engine import async_session_scope
 from memory import initialize_database, initialize_store
 from schema import (
@@ -45,6 +45,7 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     ThreadDeleted,
+    ThreadRename,
     ThreadSummary,
     UserInput,
     UserThreads,
@@ -559,6 +560,23 @@ async def _list_threads(input: UserThreadsInput, agent_id: str | None) -> UserTh
             for c in chats
         ]
     )
+
+
+@router.patch("/{agent_id}/threads/{thread_id}", operation_id="rename_thread_with_agent_id")
+async def rename_thread(
+    thread_id: str, user_id: str, rename: ThreadRename, agent_id: str = DEFAULT_AGENT
+) -> ThreadSummary:
+    """Rename a conversation. Someone else's thread is reported as not found."""
+    async with async_session_scope() as session:
+        chat = await rename_chat(session, thread_id, user_id, agent_id, rename.title)
+        if chat is None:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        return ThreadSummary(
+            thread_id=chat.thread_id,
+            agent_id=chat.agent_id,
+            updated_at=chat.updated_at,
+            title=chat.title,
+        )
 
 
 @router.delete("/{agent_id}/threads/{thread_id}", operation_id="delete_thread_with_agent_id")

@@ -23,8 +23,9 @@ app.conf.update(
     worker_max_memory_per_child=settings.WORKER_MAX_MEMORY_MB * 1024,
     task_time_limit=settings.JOB_TIME_LIMIT_S,
     task_soft_time_limit=max(30, settings.JOB_TIME_LIMIT_S - 30),
-    # Must outlast the longest job plus retry delays, or Redis hands an unfinished job to another worker.
-    broker_transport_options={"visibility_timeout": max(3600, settings.JOB_TIME_LIMIT_S * 4)},
+    # How long before Redis gives a job held by a vanished worker to another one. It must outlast the
+    # longest job (JOB_TIME_LIMIT_S) and retry delay (5 min), or a running job would be handed out twice.
+    broker_transport_options={"visibility_timeout": max(1200, settings.JOB_TIME_LIMIT_S * 2)},
     broker_connection_retry_on_startup=True,
     worker_send_task_events=False,
 )

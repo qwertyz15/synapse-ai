@@ -17,6 +17,7 @@ COPY src/ingestion/ ./ingestion/
 COPY src/memory/ ./memory/
 COPY src/schema/ ./schema/
 COPY src/service/ ./service/
+COPY src/worker/ ./worker/
 COPY src/run_service.py .
 
 CMD ["python", "run_service.py"]

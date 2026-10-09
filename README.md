@@ -36,8 +36,9 @@ repositories through the Model Context Protocol (MCP). It decides which tools a 
 shows each step as it works, and cites the pages it used.
 
 Everything runs under your control: your documents are indexed into Qdrant and found by hybrid
-search (meaning + keywords) with optional reranking, chats are stored in SQLite, Postgres or MongoDB, and API keys and GitHub tokens never reach the browser. You
-choose the model, from hosted APIs to local models served by Ollama, vLLM or SGLang.
+search (meaning + keywords) with optional reranking, chats are stored in SQLite, Postgres or
+MongoDB, and API keys and GitHub tokens never reach the browser. You choose the model, from hosted
+APIs to local models served by Ollama, vLLM or SGLang.
 
 ### What you can use it for
 

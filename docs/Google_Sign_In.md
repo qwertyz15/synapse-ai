@@ -44,6 +44,30 @@ in first.
 
 `ADMIN_EMAILS` are always allowed, whatever `SIGNUPS` says, so you can't lock yourself out.
 
+## Plans
+
+Every account has a plan that decides how it can use the model keys in your `.env`:
+
+| Plan | Who | Messages | Models | Uploads |
+|---|---|---|---|---|
+| **Admin** | Everyone in `ADMIN_EMAILS` | No limit | All | 25 MB per file, no file cap |
+| **Unlimited** | Accounts you give it to | No limit | All | 25 MB per file, no file cap |
+| **Free** | New accounts by default | `FREE_MESSAGES_PER_DAY` per UTC day | `FREE_MODELS` (all if empty) | `FREE_MAX_FILE_MB` per file, `FREE_LIBRARY_FILES` in the library |
+
+```env
+DEFAULT_PLAN=free              # or unlimited, e.g. for a private invite-only deployment
+FREE_MESSAGES_PER_DAY=20
+FREE_MODELS=deepseek-v4-flash  # comma-separated; empty allows every model
+FREE_MAX_FILE_MB=5
+FREE_LIBRARY_FILES=10
+```
+
+Users see their plan and today's usage in the sidebar's account menu, the model menu only lists
+what their plan allows, and a clear message appears when the day's messages are used up. Requests
+without an account (sign-in off) aren't limited. An admin page for changing a user's plan comes
+next; until then a plan can be changed in the `users` table (`plan` = `free` or `unlimited`,
+`daily_message_limit` to give one account its own daily limit).
+
 ## How it works
 
 - Google OAuth runs in the web UI with state and PKCE. After Google confirms who you are, the web

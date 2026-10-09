@@ -119,6 +119,7 @@ likely to set:
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `VOYAGE_API_KEY` | Document search: `openai` (uses `OPENAI_API_KEY`) or `voyage` |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_SLUG`, `WEB_SESSION_SECRET` | Connect GitHub; see [GitHub setup](docs/GitHub_MCP_Agent.md) |
 | `AUTH_ENABLED`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ADMIN_EMAILS`, `SIGNUPS`, `ALLOWED_EMAILS` | Google sign-in, admins and who may join; see [Google sign-in](docs/Google_Sign_In.md) |
+| `DEFAULT_PLAN`, `FREE_MESSAGES_PER_DAY`, `FREE_MODELS`, `FREE_MAX_FILE_MB`, `FREE_LIBRARY_FILES` | Plans for signed-in accounts and the free tier's limits; see [Plans](docs/Google_Sign_In.md#plans) |
 | `AUTH_SECRET` | Bearer token for the agent service API; required whenever it listens beyond localhost, including Docker |
 | `RATE_LIMIT_CHATS_PER_HOUR`, `RATE_LIMIT_CHATS_PER_MINUTE_GLOBAL`, `RATE_LIMIT_UPLOADS_PER_HOUR` | Web UI usage limits per user (IPs get 3x); defaults 60, 120 and 20, `0` turns one off |
 | `OPENWEATHERMAP_API_KEY` | The weather tool |

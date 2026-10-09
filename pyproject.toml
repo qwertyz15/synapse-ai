@@ -62,6 +62,7 @@ dependencies = [
     "langchain-voyageai~=0.4.1",
     "langchain-text-splitters~=1.1.2",
     "python-multipart~=0.0.32",
+    "cryptography~=50.0",
 ]
 
 # Supply-chain cooldown: resolution only considers releases >=14 days old. Needs the

@@ -4,7 +4,6 @@ Ingestion runs here, next to the vector store, because the Streamlit app may run
 separate container without access to the data folder or database.
 """
 
-import asyncio
 import logging
 from pathlib import Path
 
@@ -34,6 +33,7 @@ from schema import (
     RagDocument,
     RagDocuments,
 )
+from service.locks import ingestion_lock
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +42,6 @@ MAX_FILES_PER_UPLOAD = 10
 MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024
 
 router = APIRouter(prefix="/rag", tags=["rag"])
-
-# Concurrent runs would race on the manifest and on deleting/re-adding the same chunks.
-ingestion_lock = asyncio.Lock()
 
 
 def _data_dir() -> Path:

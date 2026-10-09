@@ -15,7 +15,7 @@ from ingestion.attachments import open_attachment_store
 from ingestion.index import reassign_user
 from ingestion.user_library import open_user_library
 from schema import Account, GoogleSignIn
-from service.rag import ingestion_lock
+from service.locks import ingestion_lock
 
 logger = logging.getLogger(__name__)
 

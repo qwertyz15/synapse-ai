@@ -4,7 +4,7 @@
 
 # Synapse
 
-**A self-hosted ChatGPT alternative that answers from your documents, the web and your
+**A self-hosted, open-source ChatGPT alternative that answers from your documents, the web and your
 GitHub repositories.**
 
 Built on [LangGraph](https://langchain-ai.github.io/langgraph/) agents, a [FastAPI](https://fastapi.tiangolo.com/)
@@ -17,6 +17,7 @@ Ollama and other model providers.
 ![FastAPI](https://img.shields.io/badge/FastAPI-service-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-web%20UI-000000?logo=nextdotjs&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-GitHub%20connector-6E40C9)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [Quickstart](#quickstart) · [Features](#features) · [How it works](#how-it-works) ·
 [Configuration](#configuration) · [API](#api-and-python-client)
@@ -237,3 +238,8 @@ cd frontend && npm test && npm run lint  # web UI tests and lint
 - `langgraph dev` opens the agents in [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/).
 - `uv run python scripts/ingest.py` re-indexes `data/` from the command line (`--dry-run`,
   `--full-rebuild`).
+
+## License
+
+Synapse is released under the [MIT License](LICENSE). See [NOTICE](NOTICE) for third-party code it
+includes.

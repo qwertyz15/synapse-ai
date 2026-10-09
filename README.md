@@ -76,6 +76,10 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
 
 There are two ways to run Synapse. Both use the same code and the same `.env`.
 
+> **Can't remember a command?** Run `make` (or `make help`) for a menu of everything: running,
+> Docker, tests, lint, ingestion. Without `make` installed (`sudo apt install make` on Ubuntu),
+> `./run.sh --help` covers running locally and the Docker commands.
+
 | | **Docker** | **Manual** |
 |---|---|---|
 | Best for | Servers, or trying the full setup in one command | Development on your own machine |
@@ -98,26 +102,28 @@ without spending API credits, set `USE_FAKE_MODEL=true`.
 
 ### 2a. Run with Docker
 
-Docker needs two secrets in `.env` (generate them once and keep them; the database is created with
-the password):
+Docker needs two secrets in `.env`, `AUTH_SECRET` and `POSTGRES_PASSWORD`; generate them once and
+keep them, since the database is created with the password. `make env` adds both if they're missing.
 
 ```sh
-echo "AUTH_SECRET=$(openssl rand -hex 32)" >> .env
-echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
-
-docker compose up -d --build
+make env && make up         # or: ./run.sh --docker up   (or: docker compose up -d --build)
 ```
 
 Open <http://localhost:3000>. This starts the web UI, the agent service (port 8080), PostgreSQL,
 Qdrant, Redis, the background indexing worker and the legacy Streamlit app (port 8501).
 
-| Command | What it does |
-|---|---|
-| `docker compose ps` | Status of every service |
-| `docker compose logs -f worker` | Watch uploads being indexed |
-| `docker compose down` | Stop everything; data stays in Docker volumes |
-| `docker compose watch` | Development mode: rebuild or sync services when you change code |
-| `docker compose up -d --build` | Apply changes to `pyproject.toml`, `uv.lock` or `frontend/package-lock.json` |
+| `make` | `./run.sh` | What it does |
+|---|---|---|
+| `make up` | `--docker up` | Build and start everything |
+| `make ps` | `--docker ps` | Status of every service |
+| `make logs s=worker` | `--docker logs worker` | Follow logs (leave out the service for all of them) |
+| `make restart s=worker` | `--docker restart worker` | Restart one service, or all |
+| `make down` | `--docker down` | Stop everything; data stays in Docker volumes |
+| `make watch` | `--docker watch` | Development mode: rebuild or sync services when you change code |
+| `make reset` | | Delete all Docker data (asks you to type `delete` first) |
+
+After changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `make up` again to
+rebuild.
 
 Good to know:
 
@@ -134,7 +140,7 @@ Good to know:
 **Simple: one command, no extra servers**
 
 ```sh
-./run.sh                # web UI on http://localhost:3000, agent service on :8080
+make run                # or: ./run.sh   (web UI on http://localhost:3000, agent service on :8080)
 ```
 
 `run.sh` installs the dependencies on first run, starts the agent service and the web UI together,
@@ -142,11 +148,11 @@ and stops both on Ctrl+C or if either one exits. Data is kept in local files: SQ
 the app database, and an embedded Qdrant store in `./qdrant_data`. Uploads are indexed while you
 wait, so no worker is needed.
 
-| Option | What it does |
-|---|---|
-| `./run.sh --ingest` | Index the files in `data/` into the shared library before starting |
-| `./run.sh --streamlit` | Also start the legacy Streamlit app on port 8501 |
-| `PORT=8090 WEB_PORT=3001 ./run.sh` | Use different ports |
+| `make` | `./run.sh` | What it does |
+|---|---|---|
+| `make run-ingest` | `--ingest` | Index the files in `data/` into the shared library before starting |
+| `make run-streamlit` | `--streamlit` | Also start the legacy Streamlit app on port 8501 |
+| | `PORT=8090 WEB_PORT=3001 ./run.sh` | Use different ports |
 
 **With background indexing (optional)**
 
@@ -165,8 +171,8 @@ QDRANT_URL=http://localhost:6333
 ```
 
 ```sh
-./run.sh                                          # terminal 1: web UI and agent service
-cd src && uv run celery -A worker worker -Q ingestion   # terminal 2: the worker
+make run       # terminal 1: web UI and agent service
+make worker    # terminal 2: the worker  (or: cd src && uv run celery -A worker worker -Q ingestion)
 ```
 
 The worker and the agent service are separate processes, so they need the Qdrant **server**: the
@@ -285,6 +291,7 @@ tests/           Python tests
 scripts/         ingestion, smoke tests and helpers
 docs/            guides
 compose.yaml     the Docker setup (Getting started, option 2a)
+Makefile         command menu: run `make`
 run.sh           start the web UI and agent service locally (option 2b)
 ```
 
@@ -314,16 +321,17 @@ See `src/run_client.py` for streaming and async examples.
 ## Development
 
 ```sh
-uv sync --frozen && pre-commit install   # Python dependencies and git hooks
-uv run pytest                            # Python tests
-cd frontend && npm test && npm run lint  # web UI tests and lint
+make install && uv run pre-commit install   # dependencies and git hooks
+make test                                   # Python and web UI tests
+make lint                                   # ruff, pyrefly, eslint and tsc
+make format                                 # format Python and web UI code
 ```
 
 - `scripts/smoke_test.sh` checks the optional integrations against real infrastructure in Docker:
   Postgres and MongoDB checkpointers, the AG-UI endpoint, and LangFuse tracing.
 - `langgraph dev` opens the agents in [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/).
-- `uv run python scripts/ingest.py` re-indexes `data/` from the command line (`--dry-run`,
-  `--full-rebuild`).
+- `make ingest` re-indexes `data/` from the command line (`make ingest args=--dry-run`, or
+  `args=--full-rebuild`).
 
 ## License
 

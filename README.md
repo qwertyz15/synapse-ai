@@ -105,8 +105,9 @@ cp .env.example .env
 
 In `.env`, add at least one model key (e.g. `DEEPSEEK_API_KEY` or `OPENAI_API_KEY`). For document
 search, also set an embeddings provider (`OPENAI_API_KEY`, or `EMBEDDING_PROVIDER=voyage` with
-`VOYAGE_API_KEY`). Everything else is optional; see [Configuration](#configuration). To try the UI
-without spending API credits, set `USE_FAKE_MODEL=true`.
+`VOYAGE_API_KEY`; with Voyage, `RERANKER=voyage` also turns on reranking). Everything else is
+optional; see [Configuration](#configuration). To try the UI without spending API credits, set
+`USE_FAKE_MODEL=true`.
 
 ### 2a. Run with Docker
 
@@ -281,8 +282,10 @@ flowchart LR
     S --> A[LangGraph agents]
     A --> T["Tools: DocumentSearch, WebSearch,<br/>Calculator, Weather"]
     A --> G[GitHub MCP server]
-    T --> C[("Qdrant<br/>shared + personal libraries,<br/>chat attachments")]
+    T -->|"hybrid search<br/>(meaning + BM25)"| C[("Qdrant<br/>shared + personal libraries,<br/>chat attachments")]
+    T -.->|"optional reranking"| V[Voyage AI reranker]
     S --> M[("Chat history<br/>SQLite / Postgres / MongoDB")]
+    S -->|upload jobs| R[(Redis)] --> K[Celery worker] --> C
 ```
 
 - **The browser only talks to the web UI.** The web UI's server-side proxy adds the service token
@@ -299,9 +302,9 @@ flowchart LR
   by keywords (BM25) together, so exact terms like invoice numbers are found too
   ([details](docs/RAG_Assistant.md#hybrid-search)); with `RERANKER=voyage`, a Voyage reranker then
   picks the passages that best answer the question ([details](docs/RAG_Assistant.md#reranking)).
-  The shared library lives in the `rag_documents` collection, each user's own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
-  (tagged with their chat and user). A search returns the best-matching
-  passages, never whole files.
+  The shared library lives in the `rag_documents` collection, each user's own library in
+  `user_library` (tagged with the user), and chat attachments in `chat_attachments` (tagged with
+  their chat and user). A search returns the best-matching passages, never whole files.
 - **Conversation memory**: every message, tool call and tool result in a chat is saved and sent back
   to the model on each turn.
 - **App database**: SQLAlchemy models (`src/db/`) for chats (owner, title, times), chat attachments
@@ -332,7 +335,7 @@ src/
   agents/        agents, tools and the shared GitHub MCP tools
   service/       FastAPI service: chat, history, threads, library, attachments, AG-UI
   db/            SQLAlchemy models, Alembic migrations and queries for the app database
-  ingestion/     document parsing, chunking, Qdrant indexing and upload jobs
+  ingestion/     parsing, chunking, Qdrant indexing, hybrid search, reranking and upload jobs
   worker/        Celery worker that indexes uploads in the background
   memory/        SQLite / Postgres / MongoDB checkpointers
   core/          settings, model setup, embeddings
@@ -355,10 +358,14 @@ The service's OpenAPI docs are at <http://localhost:8080/redoc>. Main endpoints:
 | Endpoint | Purpose |
 |---|---|
 | `POST /{agent}/stream`, `POST /{agent}/invoke` | Chat (streaming or a single reply) |
-| `POST /{agent}/history`, `GET /{agent}/threads`, `GET /chats`, `DELETE /{agent}/threads/{thread_id}` | Chat history, list (per agent or all) and delete |
+| `POST /{agent}/history`, `GET /{agent}/threads`, `GET /chats` | Chat history, and chats per agent or all |
+| `PATCH /{agent}/threads/{thread_id}`, `DELETE /{agent}/threads/{thread_id}` | Rename or delete a chat |
 | `GET/POST/DELETE /rag/my-documents` | A user's own library (`user_id` query parameter) |
 | `GET/POST/DELETE /rag/documents` | The shared library (API only; the web UI can't change it) |
 | `GET/POST/DELETE /rag/attachments` | Files attached to one chat |
+| `GET /rag/jobs`, `POST /rag/jobs/{job_id}/retry`, `DELETE /rag/jobs/{job_id}` | Upload indexing jobs: progress, retry a failed one, dismiss |
+| `POST /auth/sign-in`, `GET /auth/plan`, `GET/PUT/DELETE /auth/keys` | Accounts: sign-in, plan and usage, users' own API keys |
+| `GET /admin/users`, `PATCH /admin/users/{user_id}` | Admin page: list users, change their plan or daily limit, block them |
 | `GET /info` | Available agents and models |
 | `POST /agui/{agent}/run` | [AG-UI protocol](docs/AGUI.md) |
 

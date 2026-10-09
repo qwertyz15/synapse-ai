@@ -5,7 +5,7 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Chat, ChatAttachment, User, UserDocument, utcnow
+from db.models import Chat, ChatAttachment, IngestionJob, User, UserDocument, utcnow
 
 
 async def find_google_user(session: AsyncSession, google_sub: str, email: str) -> User | None:
@@ -43,6 +43,9 @@ async def move_anonymous_rows(session: AsyncSession, from_user: str, to_user: st
     with that name.
     """
     await session.execute(update(Chat).where(Chat.user_id == from_user).values(user_id=to_user))
+    await session.execute(
+        update(IngestionJob).where(IngestionJob.user_id == from_user).values(user_id=to_user)
+    )
     await session.execute(
         update(ChatAttachment).where(ChatAttachment.user_id == from_user).values(user_id=to_user)
     )

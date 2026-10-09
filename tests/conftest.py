@@ -57,3 +57,15 @@ def vector_store(tmp_path):
         patch.object(settings, "QDRANT_URL", None),
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def no_real_embeddings():
+    """Embedding calls must be faked; without keys, a forgotten patch fails instead of calling an API."""
+    from core.settings import settings
+
+    with (
+        patch.object(settings, "OPENAI_API_KEY", None),
+        patch.object(settings, "VOYAGE_API_KEY", None),
+    ):
+        yield

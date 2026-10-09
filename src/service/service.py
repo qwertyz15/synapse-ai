@@ -57,7 +57,7 @@ from service.admin import router as admin_router
 from service.agui import router as agui_router
 from service.plans import charge_message
 from service.plans import router as plans_router
-from service.rag import remove_thread_attachments
+from service.rag import recover_jobs, remove_thread_attachments, remove_thread_jobs
 from service.rag import router as rag_router
 from service.threads import thread_owner
 from service.titles import name_chat_later
@@ -136,6 +136,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 # Set store for long-term memory (cross-conversation knowledge)
                 agent.store = store
             await run_backfills(saver)
+            await recover_jobs()
             yield
     except Exception as e:
         logger.error(f"Error during database/store/agents initialization: {e}")
@@ -651,6 +652,7 @@ async def delete_thread(
     if owner is not None and checkpointer is not None:
         await checkpointer.adelete_thread(thread_id)
     removed = await remove_thread_attachments(thread_id, user_id)
+    await remove_thread_jobs(thread_id, user_id)
     async with async_session_scope() as session:
         await delete_chat(session, thread_id)
     if owner is None and not removed:

@@ -35,6 +35,7 @@ def attachments_db(tmp_path):
         patch("service.rag.settings.RAG_CHUNK_SIZE", 100),
         patch("service.rag.settings.RAG_CHUNK_OVERLAP", 0),
         patch("service.rag.get_embeddings", return_value=EMBEDDINGS),
+        patch("ingestion.jobs.get_embeddings", return_value=EMBEDDINGS),
     ):
         yield
 

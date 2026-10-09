@@ -21,6 +21,7 @@ def client(tmp_path):
         patch("service.rag.settings.RAG_CHUNK_SIZE", 100_000),
         patch("service.rag.settings.RAG_CHUNK_OVERLAP", 0),
         patch("service.rag.get_embeddings", return_value=EMBEDDINGS),
+        patch("ingestion.jobs.get_embeddings", return_value=EMBEDDINGS),
         patch.object(settings, "ADMIN_EMAILS", "boss@x.com"),
         patch.object(settings, "DEFAULT_PLAN", "free"),
         patch.object(settings, "FREE_MAX_FILE_MB", 1),

@@ -230,10 +230,30 @@ class AttachmentResult(ChatAttachments):
     """Outcome of attaching files, plus the chat's attachments afterwards."""
 
     attached: list[str] = []
+    queued: list[str] = Field(
+        default=[], description="Files accepted and waiting to be indexed in the background."
+    )
     failed: dict[str, str] = Field(default={}, description="Filename -> error message.")
     rejected: dict[str, str] = Field(
         default={}, description="Uploaded filename -> reason it wasn't accepted."
     )
+
+
+class IngestionJobInfo(BaseModel):
+    """An uploaded file on its way into a library or chat."""
+
+    id: str
+    name: str
+    kind: Literal["library", "attachment"]
+    thread_id: str | None
+    status: Literal["queued", "indexing", "ready", "failed"]
+    error: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class IngestionJobs(BaseModel):
+    jobs: list[IngestionJobInfo]
 
 
 class IngestionResult(BaseModel):
@@ -243,6 +263,9 @@ class IngestionResult(BaseModel):
     updated: list[str] = []
     deleted: list[str] = []
     unchanged: list[str] = []
+    queued: list[str] = Field(
+        default=[], description="Files accepted and waiting to be indexed in the background."
+    )
     failed: dict[str, str] = Field(default={}, description="doc_id -> error message.")
     rejected: dict[str, str] = Field(
         default={}, description="Uploaded filename -> reason it wasn't accepted."

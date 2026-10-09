@@ -92,7 +92,12 @@ def test_listing_includes_shared_library_as_read_only(client, rag_env):
     assert _names(client, "u1") == [("mine.txt", False), ("handbook.txt", True)]
 
 
-def test_large_files_are_indexed_in_batches(client, rag_env):
-    text = b"word " * 250_000  # about 12,500 chunks of 100 characters, over Chroma's batch limit
-    body = _upload(client, "u1", ("big.txt", text)).json()
-    assert body["new"] == ["big.txt"] and body["chunks_written"] > 5461
+def test_large_files_are_written_in_batches(client, rag_env):
+    from ingestion import vectors
+
+    text = b"word " * 6_000  # about 300 chunks of 100 characters
+    with patch.object(vectors, "WRITE_BATCH", 50):
+        body = _upload(client, "u1", ("big.txt", text)).json()
+    assert body["new"] == ["big.txt"] and body["chunks_written"] > 250
+    found = database_search_func("word", {"configurable": {"thread_id": "t", "user_id": "u1"}})
+    assert "word" in found

@@ -4,12 +4,14 @@ from unittest.mock import patch
 
 import pytest
 from langchain_core.documents import Document
+from langchain_core.embeddings import DeterministicFakeEmbedding
 
-from agents.tools import format_contexts, load_chroma_db
+from agents.tools import database_search_func, format_contexts
 from ingestion import parsers
 from ingestion.changes import detect_changes
 from ingestion.chunking import chunk_document
 from ingestion.cleaning import clean_pages, clean_text
+from ingestion.index import open_vectorstore
 from ingestion.loader import LocalFolderConnector, hash_file
 from ingestion.models import ParsedPage, SourceDocument
 from ingestion.parsers import parse
@@ -88,14 +90,13 @@ def test_chunk_document_omits_missing_page():
     assert "page" not in chunks[0].metadata
 
 
-def test_load_chroma_db_requires_existing_database(tmp_path):
-    missing = tmp_path / "missing_db"
-    with (
-        patch("agents.tools.settings.CHROMA_DB_PATH", str(missing)),
-        pytest.raises(FileNotFoundError, match="scripts/ingest.py"),
-    ):
-        load_chroma_db()
-    assert not missing.exists()
+def test_search_with_nothing_indexed_says_so_and_creates_nothing():
+    with patch("agents.tools.get_embeddings", return_value=DeterministicFakeEmbedding(size=8)):
+        found = database_search_func(
+            "leave policy", {"configurable": {"thread_id": "t", "user_id": "u"}}
+        )
+    assert found == "No matching passages found in the uploaded documents."
+    assert not open_vectorstore().exists()
 
 
 def test_format_contexts_cites_source_and_page():

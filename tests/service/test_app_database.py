@@ -72,7 +72,6 @@ def rag_env(tmp_path):
         patch("service.rag.settings.RAG_CHUNK_SIZE", 100),
         patch("service.rag.settings.RAG_CHUNK_OVERLAP", 0),
         patch("service.rag.get_embeddings", return_value=EMBEDDINGS),
-        patch("db.backfill.settings.CHROMA_DB_PATH", db),
     ):
         yield db
 
@@ -99,10 +98,10 @@ async def test_attachments_are_recorded_and_removed_with_the_chat(rag_env, mock_
 
 
 @pytest.mark.asyncio
-async def test_backfill_imports_attachments_already_in_chroma(rag_env):
+async def test_backfill_imports_attachments_already_indexed(rag_env):
     from ingestion.attachments import add_attachment, open_attachment_store
 
-    store = open_attachment_store(rag_env, EMBEDDINGS)
+    store = open_attachment_store(EMBEDDINGS)
     add_attachment(
         store,
         thread_id="t1",
@@ -142,8 +141,8 @@ def test_manifest_imports_the_old_sqlite_file(tmp_path):
     assert manifest.documents()[0][:3] == ("handbook.pdf", "pdf", 3)
 
 
-def test_deleted_chroma_folder_triggers_a_full_rebuild(tmp_path):
-    import shutil
+def test_emptied_vector_store_triggers_a_full_rebuild(tmp_path):
+    from ingestion.index import open_vectorstore
 
     data, chroma = tmp_path / "data", tmp_path / "chroma"
     data.mkdir()
@@ -153,6 +152,6 @@ def test_deleted_chroma_folder_triggers_a_full_rebuild(tmp_path):
     assert run_ingestion(data, chroma, **kwargs).new == ["a.txt"]
     assert run_ingestion(data, chroma, **kwargs).unchanged == ["a.txt"]
 
-    shutil.rmtree(chroma)
+    open_vectorstore().reset()
     rebuilt = run_ingestion(data, chroma, **kwargs)
     assert rebuilt.full_rebuild and rebuilt.new == ["a.txt"]

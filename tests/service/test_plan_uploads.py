@@ -17,7 +17,8 @@ MB = 1024 * 1024
 def client(tmp_path):
     with (
         patch("service.rag.settings.CHROMA_DB_PATH", str(tmp_path / "db")),
-        patch("service.rag.settings.RAG_CHUNK_SIZE", 100),
+        # Large chunks: these tests are about file sizes, not chunking, and fewer chunks index fast.
+        patch("service.rag.settings.RAG_CHUNK_SIZE", 100_000),
         patch("service.rag.settings.RAG_CHUNK_OVERLAP", 0),
         patch("service.rag.get_embeddings", return_value=EMBEDDINGS),
         patch.object(settings, "ADMIN_EMAILS", "boss@x.com"),

@@ -1,72 +1,31 @@
-import threading
-from collections.abc import Collection
-from pathlib import Path
+"""The shared library's collection, and helpers for writing a document's chunks to a collection."""
 
-import chromadb
-from chromadb.api.shared_system_client import SharedSystemClient
-from langchain_chroma import Chroma
+from collections.abc import Collection
+
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
+from ingestion.vectors import VectorStore
+
 COLLECTION_NAME = "rag_documents"
-CHROMA_FILE = "chroma.sqlite3"
-
-_clients: dict[str, chromadb.ClientAPI] = {}
-_clients_lock = threading.Lock()
 
 
-def chroma_client(db_path: str | Path) -> chromadb.ClientAPI:
-    # Chroma's client setup races when threads create clients for the same path at once
-    # (parallel tool calls), failing with KeyError / "Could not connect to tenant".
-    key = str(Path(db_path).resolve())
-    with _clients_lock:
-        if key in _clients and not (Path(key) / CHROMA_FILE).exists():
-            # The folder was deleted while we ran; the cached client would keep using the gone
-            # database. Chroma can only drop its cache wholesale, so reconnect every path.
-            SharedSystemClient.clear_system_cache()
-            _clients.clear()
-        if key not in _clients:
-            _clients[key] = chromadb.PersistentClient(path=key)
-        return _clients[key]
+def open_vectorstore(embeddings: Embeddings | None = None) -> VectorStore:
+    return VectorStore(COLLECTION_NAME, embeddings)
 
 
-def open_vectorstore(db_path: str | Path, embeddings: Embeddings) -> Chroma:
-    return Chroma(
-        collection_name=COLLECTION_NAME,
-        client=chroma_client(db_path),
-        embedding_function=embeddings,
-    )
+def delete_document(store: VectorStore, doc_id: str) -> None:
+    store.delete({"doc_id": doc_id})
 
 
-# Chroma refuses inserts above its max batch size (5,461 on SQLite), which one large file can exceed.
-ADD_BATCH_SIZE = 1000
-
-
-def add_chunks(store: Chroma, chunks: list[Document]) -> None:
-    for start in range(0, len(chunks), ADD_BATCH_SIZE):
-        batch = chunks[start : start + ADD_BATCH_SIZE]
-        store.add_documents(batch, ids=[chunk.id for chunk in batch])
-
-
-def delete_document(store: Chroma, doc_id: str) -> None:
-    store.delete(where={"doc_id": doc_id})
-
-
-def replace_document_chunks(store: Chroma, doc_id: str, chunks: list[Document]) -> None:
+def replace_document_chunks(store: VectorStore, doc_id: str, chunks: list[Document]) -> None:
     # Delete first: an edited document may produce fewer chunks, leaving stale ids behind.
     delete_document(store, doc_id)
-    add_chunks(store, chunks)
+    store.add(chunks)
 
 
-def reassign_user(store: Chroma, from_user: str, to_user: str, keep: Collection[str] = ()) -> int:
+def reassign_user(
+    store: VectorStore, from_user: str, to_user: str, keep: Collection[str] = ()
+) -> int:
     """Re-tag a user's chunks with another user id, except files named in `keep`."""
-    found = store.get(where={"user_id": from_user}, include=["metadatas"])
-    ids, metadatas = [], []
-    for chunk_id, metadata in zip(found["ids"], found["metadatas"]):
-        if metadata.get("source") in keep:
-            continue
-        ids.append(chunk_id)
-        metadatas.append({**metadata, "user_id": to_user})
-    if ids:
-        store._collection.update(ids=ids, metadatas=metadatas)
-    return len(ids)
+    return store.set_fields({"user_id": from_user}, {"user_id": to_user}, exclude={"source": keep})

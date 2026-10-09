@@ -203,7 +203,7 @@ async def upload_my_documents(user_id: str, files: list[UploadFile]) -> Ingestio
         embeddings = get_embeddings()
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
-    store = open_user_library(settings.CHROMA_DB_PATH, embeddings)
+    store = open_user_library(embeddings)
     async with ingestion_lock:
         for name, content in accepted.items():
             try:
@@ -232,7 +232,7 @@ async def upload_my_documents(user_id: str, files: list[UploadFile]) -> Ingestio
 @router.delete("/my-documents/{name:path}")
 async def delete_my_document(name: str, user_id: str) -> IngestionResult:
     """Remove a file from a user's own library."""
-    store = open_user_library(settings.CHROMA_DB_PATH)
+    store = open_user_library()
     async with ingestion_lock:
         removed_chunks = await run_in_threadpool(delete_user_document, store, user_id, name)
     async with async_session_scope() as session:
@@ -277,7 +277,7 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
             embeddings = get_embeddings()
         except ValueError as e:
             raise HTTPException(status_code=503, detail=str(e))
-        store = open_attachment_store(settings.CHROMA_DB_PATH, embeddings)
+        store = open_attachment_store(embeddings)
         async with ingestion_lock:
             for name, content in accepted.items():
                 try:
@@ -316,7 +316,7 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
 @router.delete("/attachments/{name:path}")
 async def detach_from_chat(name: str, thread_id: str, user_id: str) -> ChatAttachments:
     """Remove a file attached to a chat."""
-    store = open_attachment_store(settings.CHROMA_DB_PATH)
+    store = open_attachment_store()
     async with ingestion_lock:
         removed_chunks = await run_in_threadpool(delete_attachment, store, thread_id, user_id, name)
     async with async_session_scope() as session:
@@ -328,8 +328,6 @@ async def detach_from_chat(name: str, thread_id: str, user_id: str) -> ChatAttac
 
 async def remove_thread_attachments(thread_id: str, user_id: str) -> int:
     """Delete every file attached to a chat (used when the chat itself is deleted)."""
-    if not Path(settings.CHROMA_DB_PATH).is_dir():
-        return 0
-    store = open_attachment_store(settings.CHROMA_DB_PATH)
+    store = open_attachment_store()
     async with ingestion_lock:
         return await run_in_threadpool(delete_thread_attachments, store, thread_id, user_id)

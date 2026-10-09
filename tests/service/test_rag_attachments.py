@@ -110,14 +110,11 @@ def test_replace_and_delete_attachment(client, rag_env):
     assert missing.status_code == 404
 
 
-def test_parallel_searches_on_a_fresh_database(client, rag_env):
-    """Parallel tool calls used to race in Chroma's client setup (KeyError / missing tenant)."""
+def test_parallel_searches(client, rag_env):
+    """Parallel tool calls search at once; the embedded store must serialize them safely."""
     import concurrent.futures as cf
 
-    from ingestion import index
-
     client.post("/rag/documents", files=[("files", ("handbook.txt", b"Library handbook text."))])
-    index._clients.clear()
     config = {"configurable": {"thread_id": "t1", "user_id": "u1"}}
     with cf.ThreadPoolExecutor(6) as pool:
         results = list(pool.map(lambda i: database_search_func(f"q{i}", config), range(6)))

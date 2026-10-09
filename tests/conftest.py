@@ -45,3 +45,15 @@ def no_generated_titles():
 
     with patch.object(settings, "GENERATE_CHAT_TITLES", False):
         yield
+
+
+@pytest.fixture(autouse=True)
+def vector_store(tmp_path):
+    """Give every test its own embedded Qdrant folder instead of the developer's store."""
+    from core.settings import settings
+
+    with (
+        patch.object(settings, "QDRANT_PATH", str(tmp_path / "qdrant")),
+        patch.object(settings, "QDRANT_URL", None),
+    ):
+        yield

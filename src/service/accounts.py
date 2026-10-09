@@ -2,7 +2,6 @@
 anonymous browser's chats and files. The web UI does the Google OAuth and calls this server-side."""
 
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -58,13 +57,8 @@ def account(user: User) -> Account:
 async def _claim_anonymous(from_user: str, to_user: str) -> None:
     async with async_session_scope() as session:
         kept = await move_anonymous_rows(session, from_user, to_user)
-    if not Path(settings.CHROMA_DB_PATH).is_dir():
-        return
     async with ingestion_lock:
-        for store, keep in (
-            (open_attachment_store(settings.CHROMA_DB_PATH), set()),
-            (open_user_library(settings.CHROMA_DB_PATH), kept),
-        ):
+        for store, keep in ((open_attachment_store(), set()), (open_user_library(), kept)):
             await run_in_threadpool(reassign_user, store, from_user, to_user, keep)
 
 

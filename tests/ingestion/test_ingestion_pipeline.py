@@ -29,7 +29,7 @@ def _ingest(source, db, embeddings, **kwargs):
 
 
 def _chunk_ids(db, embeddings, doc_id):
-    return open_vectorstore(db, embeddings).get(where={"doc_id": doc_id})["ids"]
+    return open_vectorstore(embeddings).metadatas({"doc_id": doc_id})
 
 
 def test_incremental_ingestion_lifecycle(tmp_path, source, embeddings):
@@ -67,7 +67,7 @@ def test_embedding_change_triggers_full_rebuild(tmp_path, source, embeddings):
 
     assert report.full_rebuild
     assert sorted(report.new) == ["a.txt", "b.md"]
-    assert len(open_vectorstore(db, embeddings).get()["ids"]) == report.chunks_written
+    assert open_vectorstore(embeddings).count() == report.chunks_written
 
 
 def test_failed_document_is_isolated_and_retried(tmp_path, source, embeddings):

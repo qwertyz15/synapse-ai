@@ -8,13 +8,7 @@ from core.embeddings import embedding_signature, get_embeddings
 from ingestion.changes import detect_changes
 from ingestion.chunking import chunk_document
 from ingestion.cleaning import clean_pages
-from ingestion.index import (
-    COLLECTION_NAME,
-    chroma_client,
-    delete_document,
-    open_vectorstore,
-    replace_document_chunks,
-)
+from ingestion.index import delete_document, open_vectorstore, replace_document_chunks
 from ingestion.loader import LocalFolderConnector
 from ingestion.manifest import Manifest
 from ingestion.models import IngestionReport
@@ -53,8 +47,8 @@ def run_ingestion(
         report.full_rebuild = (
             full_rebuild
             or manifest.get_meta(SIGNATURE_KEY) != signature
-            # The index says files are embedded but the vectors are gone (chroma_db was deleted).
-            or (bool(indexed) and _library_collection_empty(db_path))
+            # The index says files are embedded but the vectors are gone (the store was emptied).
+            or (bool(indexed) and open_vectorstore().count() == 0)
         )
         if report.full_rebuild:
             indexed = {}
@@ -67,9 +61,9 @@ def run_ingestion(
             report.updated = [doc.doc_id for doc in changes.updated]
             return report
 
-        store = open_vectorstore(db_path, embeddings or get_embeddings())
+        store = open_vectorstore(embeddings or get_embeddings())
         if report.full_rebuild:
-            store.reset_collection()
+            store.reset()
             manifest.clear()
             manifest.set_meta(SIGNATURE_KEY, signature)
 
@@ -94,12 +88,3 @@ def run_ingestion(
         return report
     finally:
         manifest.close()
-
-
-def _library_collection_empty(db_path: str | Path) -> bool:
-    if not Path(db_path).is_dir():
-        return True
-    client = chroma_client(db_path)
-    if COLLECTION_NAME not in {c.name for c in client.list_collections()}:
-        return True
-    return client.get_collection(COLLECTION_NAME).count() == 0

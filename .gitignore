@@ -203,3 +203,4 @@ smoke_live_app_failure.png
 # App database (chats, attachments, library index)
 app.db
 app.db-*
+qdrant_data/

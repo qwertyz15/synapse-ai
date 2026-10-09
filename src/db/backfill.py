@@ -6,14 +6,12 @@ run on every startup.
 
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from sqlalchemy import select
 
-from core import settings
 from db.chats import make_title
 from db.engine import async_session_scope
 from db.models import AppMeta, Chat, ChatAttachment, utcnow
@@ -103,49 +101,40 @@ async def backfill_chats(checkpointer: Any) -> int:
 
 
 async def backfill_attachments() -> int:
-    """Create `chat_attachments` rows for files already indexed in the Chroma collection."""
+    """Create `chat_attachments` rows for files already indexed in the attachments collection."""
     if await _done(ATTACHMENTS_FLAG):
         return 0
     created = 0
-    if Path(settings.CHROMA_DB_PATH).is_dir():
-        from ingestion.attachments import ATTACHMENTS_COLLECTION
-        from ingestion.index import chroma_client
+    from ingestion.attachments import open_attachment_store
 
-        client = chroma_client(settings.CHROMA_DB_PATH)
-        if ATTACHMENTS_COLLECTION in {c.name for c in client.list_collections()}:
-            metadatas = (
-                client.get_collection(ATTACHMENTS_COLLECTION).get(include=["metadatas"])[
-                    "metadatas"
-                ]
-                or []
+    metadatas = open_attachment_store().metadatas()
+    files: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for meta in metadatas:
+        key = (str(meta["thread_id"]), str(meta["user_id"]), str(meta["source"]))
+        entry = files.setdefault(key, {"meta": meta, "chunks": 0})
+        entry["chunks"] += 1
+    async with async_session_scope() as session:
+        for (thread_id, user_id, name), entry in files.items():
+            exists = await session.scalar(
+                select(ChatAttachment.id).where(
+                    ChatAttachment.thread_id == thread_id,
+                    ChatAttachment.user_id == user_id,
+                    ChatAttachment.name == name,
+                )
             )
-            files: dict[tuple[str, str, str], dict[str, Any]] = {}
-            for meta in metadatas:
-                key = (str(meta["thread_id"]), str(meta["user_id"]), str(meta["source"]))
-                entry = files.setdefault(key, {"meta": meta, "chunks": 0})
-                entry["chunks"] += 1
-            async with async_session_scope() as session:
-                for (thread_id, user_id, name), entry in files.items():
-                    exists = await session.scalar(
-                        select(ChatAttachment.id).where(
-                            ChatAttachment.thread_id == thread_id,
-                            ChatAttachment.user_id == user_id,
-                            ChatAttachment.name == name,
-                        )
-                    )
-                    if exists:
-                        continue
-                    session.add(
-                        ChatAttachment(
-                            thread_id=thread_id,
-                            user_id=user_id,
-                            name=name,
-                            file_type=str(entry["meta"].get("file_type", "")),
-                            chunk_count=entry["chunks"],
-                            created_at=_parse_ts(entry["meta"].get("ingested_at")),
-                        )
-                    )
-                    created += 1
+            if exists:
+                continue
+            session.add(
+                ChatAttachment(
+                    thread_id=thread_id,
+                    user_id=user_id,
+                    name=name,
+                    file_type=str(entry["meta"].get("file_type", "")),
+                    chunk_count=entry["chunks"],
+                    created_at=_parse_ts(entry["meta"].get("ingested_at")),
+                )
+            )
+            created += 1
     await _mark(ATTACHMENTS_FLAG)
     return created
 

@@ -1,3 +1,4 @@
+import re
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -13,7 +14,7 @@ from langchain_core.messages import (
 )
 
 from core import settings
-from core.llm import user_key_for
+from core.llm import PROVIDER_NAMES, provider_of, user_key_for
 from schema import ChatMessage
 
 
@@ -110,3 +111,58 @@ def remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]
         for content_item in content
         if isinstance(content_item, str) or content_item["type"] != "tool_use"
     ]
+
+
+# Libraries whose errors come from a model provider's API; anything else is a bug, not the provider.
+_PROVIDER_MODULES = {"openai", "anthropic", "google", "groq", "langchain_google_genai", "httpx"}
+
+
+# How providers word a bad key when they don't answer 401 (Google says 400).
+_BAD_KEY_PHRASES = (
+    "API key not valid",
+    "API_KEY_INVALID",
+    "invalid_api_key",
+    "Incorrect API key",
+    "invalid x-api-key",
+)
+
+
+def describe_model_error(error: BaseException, model: str | None) -> str | None:
+    """A message a user can act on for an error from the model provider, or None for other errors."""
+    if not (
+        isinstance(error, TimeoutError) or type(error).__module__.split(".")[0] in _PROVIDER_MODULES
+    ):
+        return None
+    text = str(error)
+    status = getattr(error, "status_code", None)
+    if not isinstance(status, int):
+        found = re.search(r"\b(401|403|404|429)\b", text)
+        status = int(found.group(1)) if found else None
+    provider = PROVIDER_NAMES.get(provider_of(model) or "") if model else None
+    who = provider or "The model provider"
+    own = bool(model and user_key_for(model))
+    if isinstance(error, TimeoutError) or "timeout" in type(error).__name__.lower():
+        return f"{who} didn't respond in time. Try again, or pick another model."
+    if status == 429 or "RESOURCE_EXHAUSTED" in text or "insufficient_quota" in text:
+        if own:
+            return (
+                f"{who} refused the request: your key has reached its quota or rate limit for "
+                f"{model}. Free-tier keys often don't include every model; pick another model, or "
+                f"check your plan and billing with {who}."
+            )
+        return f"{who} is limiting requests for {model} right now. Try again soon, or pick another model."
+    if status == 401 or any(phrase in text for phrase in _BAD_KEY_PHRASES):
+        return (
+            f"{who} rejected your API key. Update it in Settings."
+            if own
+            else f"{who} rejected the API key."
+        )
+    if status == 403 or "PERMISSION_DENIED" in text:
+        return (
+            f"Your {who} key isn't allowed to use {model}."
+            if own
+            else f"{who} doesn't allow {model} on this account."
+        )
+    if status == 404 or "NOT_FOUND" in text or "model_not_found" in text:
+        return f"{model} isn't available with this {who} key."
+    return None

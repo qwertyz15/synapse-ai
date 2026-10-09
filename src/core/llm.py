@@ -77,6 +77,15 @@ USER_KEY_PROVIDERS = {
     "openrouter": OpenRouterModelName,
 }
 
+PROVIDER_NAMES = {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "deepseek": "DeepSeek",
+    "google": "Google",
+    "groq": "Groq",
+    "openrouter": "OpenRouter",
+}
+
 USER_KEY_TIMEOUT_S = 60
 
 # The current request's own keys by provider; set only around one user's run.

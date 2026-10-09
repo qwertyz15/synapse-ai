@@ -65,6 +65,7 @@ from service.user_keys import load_user_keys
 from service.user_keys import router as user_keys_router
 from service.utils import (
     convert_message_content_to_string,
+    describe_model_error,
     ensure_model_available,
     langchain_to_chat_message,
     messages_from_checkpoint,
@@ -330,7 +331,10 @@ async def _run_invoke(
         return output
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error")
+        message = describe_model_error(e, user_input.model or settings.DEFAULT_MODEL)
+        raise HTTPException(
+            status_code=502 if message else 500, detail=message or "Unexpected error"
+        )
 
 
 async def message_generator(
@@ -446,7 +450,8 @@ async def message_generator(
                         yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
         except Exception as e:
             logger.error(f"Error in message generator: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
+            message = describe_model_error(e, user_input.model or settings.DEFAULT_MODEL)
+            yield f"data: {json.dumps({'type': 'error', 'content': message or 'Internal server error'})}\n\n"
         finally:
             yield "data: [DONE]\n\n"
 

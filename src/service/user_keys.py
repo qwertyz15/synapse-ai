@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import delete, select
 
 from core import settings
-from core.llm import USER_KEY_PROVIDERS
+from core.llm import PROVIDER_NAMES, USER_KEY_PROVIDERS
 from db.engine import async_session_scope
 from db.models import UserApiKey, utcnow
 from db.users import get_user
@@ -26,15 +26,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 VERIFY_TIMEOUT_S = 10
-
-PROVIDER_NAMES = {
-    "openai": "OpenAI",
-    "anthropic": "Anthropic",
-    "deepseek": "DeepSeek",
-    "google": "Google",
-    "groq": "Groq",
-    "openrouter": "OpenRouter",
-}
 
 # One cheap, free request per provider that fails with 401/403 for a bad key.
 _CHECKS: dict[str, tuple[str, str, str]] = {

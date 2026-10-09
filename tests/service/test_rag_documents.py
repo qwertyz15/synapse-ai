@@ -84,6 +84,19 @@ def test_upload_rejects_oversized_file(client, rag_env):
     assert "big.txt" in response.json()["rejected"]
 
 
+def test_upload_rejects_too_many_files(client, rag_env):
+    with patch("service.rag.MAX_FILES_PER_UPLOAD", 2):
+        response = _upload(client, ("a.txt", b"a"), ("b.txt", b"b"), ("c.txt", b"c"))
+    assert response.status_code == 413
+
+
+def test_upload_caps_total_size_per_request(client, rag_env):
+    with patch("service.rag.MAX_TOTAL_UPLOAD_BYTES", 10):
+        body = _upload(client, ("a.txt", b"x" * 6), ("b.txt", b"y" * 6)).json()
+    assert body["new"] == ["a.txt"]
+    assert "b.txt" in body["rejected"]
+
+
 def test_delete_rejects_path_outside_data_dir(client, rag_env):
     response = client.delete("/rag/documents/%2E%2E/secret.txt")
     assert response.status_code == 400

@@ -38,6 +38,8 @@ from schema import (
 logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_FILES_PER_UPLOAD = 10
+MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
@@ -89,8 +91,13 @@ def list_documents() -> RagDocuments:
 
 async def _read_uploads(files: list[UploadFile]) -> tuple[dict[str, bytes], dict[str, str]]:
     """Accepted name -> content, and rejected name -> reason."""
+    if len(files) > MAX_FILES_PER_UPLOAD:
+        raise HTTPException(
+            status_code=413, detail=f"Upload at most {MAX_FILES_PER_UPLOAD} files at a time"
+        )
     accepted: dict[str, bytes] = {}
     rejected: dict[str, str] = {}
+    total = 0
     for upload in files:
         # Path.name drops any directory parts a client sends, preventing path traversal.
         name = Path(upload.filename or "").name
@@ -104,6 +111,13 @@ async def _read_uploads(files: list[UploadFile]) -> tuple[dict[str, bytes], dict
         if len(content) > MAX_UPLOAD_BYTES:
             rejected[name] = f"Larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB"
             continue
+        if total + len(content) > MAX_TOTAL_UPLOAD_BYTES:
+            rejected[name] = (
+                f"Over the {MAX_TOTAL_UPLOAD_BYTES // (1024 * 1024)} MB limit per upload; "
+                "send it separately"
+            )
+            continue
+        total += len(content)
         accepted[name] = content
     return accepted, rejected
 

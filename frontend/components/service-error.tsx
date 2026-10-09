@@ -13,7 +13,8 @@ export function ServiceError({ message }: { message: string }) {
       <h1 className="text-lg font-semibold">Can&apos;t reach the agent service</h1>
       <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       <p className="max-w-md text-sm text-muted-foreground">
-        Start it with <code className="rounded bg-muted px-1.5 py-0.5">./run.sh</code> and try again.
+        Start it with <code className="rounded bg-muted px-1.5 py-0.5">make run</code> (or{" "}
+        <code className="rounded bg-muted px-1.5 py-0.5">make up</code> for Docker) and try again.
       </p>
       <Button variant="outline" onClick={retryInfo}>
         Try again

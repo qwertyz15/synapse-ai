@@ -38,7 +38,7 @@ and the agent then works with *their* repositories. No one has to create a token
    Also add `GITHUB_APP_SLUG`, the last part of the app's **Public link** (`https://github.com/apps/<slug>`).
    With it, users who haven't installed the app yet go straight to GitHub's "choose repositories" page
    after authorizing. The App ID and private key aren't needed.
-3. Restart `./run.sh`, open <http://localhost:3000> and click **Connect GitHub**.
+3. Restart Synapse (`make run`, or `make up` for Docker), open <http://localhost:3000> and click **Connect GitHub**.
 
 How the token is handled: the web server keeps each user's token in an encrypted, httpOnly cookie and
 sends it to the service only for GitHub agent requests (`X-GitHub-Token` header). The service passes it

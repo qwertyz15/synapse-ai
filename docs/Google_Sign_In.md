@@ -33,7 +33,7 @@ SIGNUPS=open                      # open | invite | closed
 ALLOWED_EMAILS=                   # for invite: friend@gmail.com,@bracu.ac.bd
 ```
 
-Restart Synapse (`./run.sh`, or `docker compose up -d` for Docker). Every page now asks you to sign
+Restart Synapse (`make run`, or `make up` for Docker). Every page now asks you to sign
 in first.
 
 | `SIGNUPS` | Who can create an account |

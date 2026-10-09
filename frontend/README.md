@@ -4,7 +4,7 @@ A ChatGPT-style chat interface for the agent service, built with Next.js, Tailwi
 
 ## Run
 
-From the repo root, `./run.sh` starts the service and this UI together at http://localhost:3000.
+From the repo root, `make run` starts the service and this UI together at http://localhost:3000.
 
 To run the UI on its own against a service that's already running:
 

@@ -7,7 +7,7 @@ You can build a RAG assistant on a Qdrant vector store.
 - **Qdrant server** when `QDRANT_URL` is set. Docker Compose runs one (`qdrant` service) and sets
   it; its memory cap is `QDRANT_MEMORY_LIMIT` (512 MB by default). Collections keep vectors, payload
   and the index on disk, so memory stays small.
-- **Embedded store** in `QDRANT_PATH` (`./qdrant_data`) otherwise, e.g. for `./run.sh`. Only one
+- **Embedded store** in `QDRANT_PATH` (`./qdrant_data`) otherwise, e.g. for `make run`. Only one
   process can open it, so a separate ingestion worker needs the server.
 
 Coming from an older version that used Chroma? Copy your data across once, without re-embedding:
@@ -22,7 +22,7 @@ python scripts/migrate_chroma_to_qdrant.py
 Uploads from the Library and chat attachments become **jobs** (`ingestion_jobs` table): the file is
 saved to `UPLOADS_DIR`, and with `REDIS_URL` set a Celery worker indexes it while the web UI shows
 *Queued → Indexing… → ready* (or the error, with Retry). Without `REDIS_URL` the same code runs
-during the upload request instead, which is fine for `./run.sh` on your own machine.
+during the upload request instead, which is fine for `make run` on your own machine.
 
 Only the job id goes through Redis; the job's status lives in the app database. The worker imports
 just the ingestion code (about 150 MB before the embedding client loads) and is kept within a memory

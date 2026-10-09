@@ -22,7 +22,7 @@ When you send a message in the web UI:
 
 | File | What it does |
 |---|---|
-| `run_service.py` | Starts the FastAPI service with uvicorn on `HOST:PORT` (default `0.0.0.0:8080`). This is what `run.sh` runs. |
+| `run_service.py` | Starts the FastAPI service with uvicorn on `HOST:PORT` (default `127.0.0.1:8080`). This is what `make run` (via `scripts/run_local.sh`) and the Docker image run. |
 | `run_agent.py` | Runs one agent directly in the terminal, without the service. Handy for quick experiments. |
 | `run_client.py` | Examples of calling the running service with the Python `AgentClient` (sync, async, streaming). |
 | `streamlit_app.py` | The legacy Streamlit chat UI, which talks to the service through `AgentClient`. |

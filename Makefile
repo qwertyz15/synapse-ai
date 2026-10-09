@@ -1,5 +1,4 @@
 # Synapse: everyday commands. Run `make` (or `make help`) to list them.
-# Everything here also works without make: see ./run.sh --help.
 
 .DEFAULT_GOAL := help
 SHELL := /bin/bash
@@ -18,13 +17,16 @@ endef
 ##@ Run locally (no Docker)
 
 run: ## Start the web UI and agent service (http://localhost:3000)
-	./run.sh
+	scripts/run_local.sh
 
 run-ingest: ## Index ./data into the shared library, then start
-	./run.sh --ingest
+	scripts/run_local.sh --ingest
 
 run-streamlit: ## Start, plus the legacy Streamlit app on :8501
-	./run.sh --streamlit
+	scripts/run_local.sh --streamlit
+
+db: env ## Start only PostgreSQL in Docker, for `make run` with DATABASE_TYPE=postgres
+	docker compose up -d --wait postgres
 
 worker: ## Start a background indexing worker (needs REDIS_URL and QDRANT_URL in .env)
 	cd src && uv run celery -A worker worker -Q ingestion
@@ -32,25 +34,26 @@ worker: ## Start a background indexing worker (needs REDIS_URL and QDRANT_URL in
 ##@ Docker
 
 up: env ## Build and start everything in Docker (http://localhost:3000)
-	./run.sh --docker up
+	docker compose up -d --build --wait
+	@echo "Synapse is running: http://localhost:3000"
 
 down: ## Stop the Docker setup (data is kept)
-	./run.sh --docker down
+	docker compose down
 
 restart: ## Restart everything, or one service: make restart s=worker
-	./run.sh --docker restart $(s)
+	docker compose restart $(s)
 
 logs: ## Follow logs of everything, or one service: make logs s=worker
-	./run.sh --docker logs $(s)
+	docker compose logs -f --tail=100 $(s)
 
 ps: ## Show the status of each service
-	./run.sh --docker ps
+	docker compose ps
 
 build: ## Rebuild the Docker images
-	./run.sh --docker build $(s)
+	docker compose build $(s)
 
 watch: env ## Development mode: rebuild or sync services when code changes
-	./run.sh --docker watch
+	docker compose watch
 
 reset: ## Delete ALL Docker data (chats, accounts, documents); asks first
 	@read -r -p "This deletes all Docker data: Postgres, Qdrant, Redis and uploads. Type 'delete' to continue: " answer; \
@@ -98,5 +101,5 @@ help: ## Show this list
 		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } \
 		/^[a-zA-Z_-]+:.*## / { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-.PHONY: run run-ingest run-streamlit worker up down restart logs ps build watch reset env install \
+.PHONY: run run-ingest run-streamlit db worker up down restart logs ps build watch reset env install \
 	test lint format ingest migrate-chroma help

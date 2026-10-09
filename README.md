@@ -77,8 +77,8 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
 There are two ways to run Synapse. Both use the same code and the same `.env`.
 
 > **Can't remember a command?** Run `make` (or `make help`) for a menu of everything: running,
-> Docker, tests, lint, ingestion. Without `make` installed (`sudo apt install make` on Ubuntu),
-> `./run.sh --help` covers running locally and the Docker commands.
+> Docker, tests, lint, ingestion. If `make` isn't installed, install it first (`sudo apt install make`
+> on Ubuntu).
 
 | | **Docker** | **Manual** |
 |---|---|---|
@@ -106,24 +106,39 @@ Docker needs two secrets in `.env`, `AUTH_SECRET` and `POSTGRES_PASSWORD`; gener
 keep them, since the database is created with the password. `make env` adds both if they're missing.
 
 ```sh
-make env && make up         # or: ./run.sh --docker up   (or: docker compose up -d --build)
+make env && make up         # or: docker compose up -d --build
 ```
 
-Open <http://localhost:3000>. This starts the web UI, the agent service (port 8080), PostgreSQL,
-Qdrant, Redis, the background indexing worker and the legacy Streamlit app (port 8501).
+Open <http://localhost:3000>. This starts seven services:
 
-| `make` | `./run.sh` | What it does |
+| Service | Port | What it is |
 |---|---|---|
-| `make up` | `--docker up` | Build and start everything |
-| `make ps` | `--docker ps` | Status of every service |
-| `make logs s=worker` | `--docker logs worker` | Follow logs (leave out the service for all of them) |
-| `make restart s=worker` | `--docker restart worker` | Restart one service, or all |
-| `make down` | `--docker down` | Stop everything; data stays in Docker volumes |
-| `make watch` | `--docker watch` | Development mode: rebuild or sync services when you change code |
-| `make reset` | | Delete all Docker data (asks you to type `delete` first) |
+| `web` | 3000 | The Next.js web UI you open in the browser. It forwards your messages to `agent_service`. |
+| `agent_service` | 8080 (this machine only) | The backend: a FastAPI server that runs the LangGraph agents, calls the model and tools, and saves chats. |
+| `worker` | | A Celery worker that indexes uploaded files in the background. |
+| `postgres` | 5432 (this machine only) | Accounts, chats, conversation memory and the app database. |
+| `qdrant` | | The vector database that document search uses. |
+| `redis` | | The queue that passes upload jobs from `agent_service` to `worker`. |
+| `streamlit_app` | 8501 (this machine only) | The legacy Streamlit UI. |
+
+Use these names wherever a command takes a service, e.g. `make logs s=agent_service`.
+
+| Command | What it does |
+|---|---|
+| `make up` | Build and start everything, and apply changes to `.env` |
+| `make ps` | Status of every service |
+| `make logs s=worker` | Follow logs (leave out the service for all of them) |
+| `make restart s=worker` | Restart one service, or all, with the same settings |
+| `make down` | Stop everything; data stays in Docker volumes |
+| `make watch` | Development mode: rebuild or sync services when you change code |
+| `make reset` | Delete all Docker data (asks you to type `delete` first) |
 
 After changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `make up` again to
 rebuild.
+
+After changing `.env`, also run `make up` (or `docker compose up -d agent_service` for just one
+service). `make restart` doesn't apply `.env` changes: the services read `.env` when their containers
+are created, and a restart keeps the existing containers.
 
 Good to know:
 
@@ -133,32 +148,34 @@ Good to know:
   `DATABASE_TYPE` or `APP_DATABASE_URL` say), so they survive rebuilds and the worker sees them.
 - Memory is capped per container: Qdrant `QDRANT_MEMORY_LIMIT` (512 MB), Redis 128 MB and the
   worker `WORKER_MEMORY_LIMIT` (1 GB); see [background indexing](docs/RAG_Assistant.md#background-indexing).
-- Docker and `./run.sh` use the same ports (3000 and 8080), so run one at a time.
+- Docker and `make run` use the same ports (3000 and 8080), so run one at a time: `make down`
+  before `make run`. By default they also keep separate data (Docker in PostgreSQL, `make run` in
+  SQLite files); to share it, run `make run` against PostgreSQL (see 2b).
 
 ### 2b. Run manually
 
 **Simple: one command, no extra servers**
 
 ```sh
-make run                # or: ./run.sh   (web UI on http://localhost:3000, agent service on :8080)
+make run                # web UI on http://localhost:3000, agent service on :8080
 ```
 
-`run.sh` installs the dependencies on first run, starts the agent service and the web UI together,
+`make run` installs the dependencies on first run, starts the agent service and the web UI together,
 and stops both on Ctrl+C or if either one exits. Data is kept in local files: SQLite for chats and
 the app database, and an embedded Qdrant store in `./qdrant_data`. Uploads are indexed while you
 wait, so no worker is needed.
 
-| `make` | `./run.sh` | What it does |
-|---|---|---|
-| `make run-ingest` | `--ingest` | Index the files in `data/` into the shared library before starting |
-| `make run-streamlit` | `--streamlit` | Also start the legacy Streamlit app on port 8501 |
-| | `PORT=8090 WEB_PORT=3001 ./run.sh` | Use different ports |
+| Command | What it does |
+|---|---|
+| `make run-ingest` | Index the files in `data/` into the shared library before starting |
+| `make run-streamlit` | Also start the legacy Streamlit app on port 8501 |
+| `PORT=8090 WEB_PORT=3001 make run` | Use different ports |
 
 **With background indexing (optional)**
 
 To index uploads in the background like the Docker setup, run Redis and a Qdrant server yourself
 (installed natively, or with Docker as below), point `.env` at them and start a worker next to
-`./run.sh`:
+`make run`:
 
 ```sh
 docker run -d --name synapse-redis -p 127.0.0.1:6379:6379 redis:7.4-alpine
@@ -177,8 +194,31 @@ make worker    # terminal 2: the worker  (or: cd src && uv run celery -A worker 
 
 The worker and the agent service are separate processes, so they need the Qdrant **server**: the
 embedded `./qdrant_data` folder can only be opened by one process. With `REDIS_URL` set, uploads wait
-in the queue until a worker picks them up, so keep the worker running. To use PostgreSQL instead of
-SQLite, set `DATABASE_TYPE=postgres` and the `POSTGRES_*` settings.
+in the queue until a worker picks them up, so keep the worker running.
+
+**With PostgreSQL instead of SQLite (optional)**
+
+`make db` starts only the PostgreSQL container from the Docker setup, on `localhost:5432`. Point
+`.env` at it and leave `APP_DATABASE_URL` empty so the app tables go there too:
+
+```env
+DATABASE_TYPE=postgres
+APP_DATABASE_URL=
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=...        # the one `make env` generated
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=agent_service
+```
+
+```sh
+make down    # if the full Docker setup is running (it uses the same ports)
+make db      # PostgreSQL only
+make run
+```
+
+This is the same database the Docker setup uses, so accounts and chats are shared between the two.
+Docker sets its own `POSTGRES_HOST` and `DATABASE_TYPE`, so these settings don't affect `make up`.
 
 Coming from an older version that stored documents in Chroma? Copy them into Qdrant once with
 `python scripts/migrate_chroma_to_qdrant.py` (no re-embedding needed).
@@ -190,7 +230,7 @@ Coming from an older version that stored documents in Chroma? Copy them into Qdr
 | Ask anything | Type in the message box. Tool steps such as "Searched documents ✓" appear as the assistant works; click one to see its input and output. |
 | Use a file in one chat | **+ → Attach to this chat**. It appears on your next message and stays searchable for the whole conversation. |
 | Use a file in all your chats | **+ → Add to my library**, or open **Library** in the sidebar. Only you can see it. |
-| Share a file with everyone | Put it in `data/` and run `./run.sh --ingest` (or `scripts/ingest.py`). |
+| Share a file with everyone | Put it in `data/` and run `make ingest`. |
 | Work with GitHub | **+ → Connectors → GitHub** (connect first if asked), then ask e.g. "List the recent commits in owner/repo". |
 | Let it change things on GitHub | Sidebar **@username → Allow changes**. Without it, every GitHub call is read-only. |
 | Delete a chat | Hover over it in the sidebar, then **⋯ → Delete**. Its attached files are removed too. |
@@ -292,7 +332,6 @@ scripts/         ingestion, smoke tests and helpers
 docs/            guides
 compose.yaml     the Docker setup (Getting started, option 2a)
 Makefile         command menu: run `make`
-run.sh           start the web UI and agent service locally (option 2b)
 ```
 
 ## API and Python client

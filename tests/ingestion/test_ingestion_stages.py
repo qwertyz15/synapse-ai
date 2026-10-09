@@ -6,12 +6,12 @@ import pytest
 from langchain_core.documents import Document
 
 from agents.tools import format_contexts, load_chroma_db
+from ingestion import parsers
 from ingestion.changes import detect_changes
 from ingestion.chunking import chunk_document
 from ingestion.cleaning import clean_pages, clean_text
 from ingestion.loader import LocalFolderConnector, hash_file
 from ingestion.models import ParsedPage, SourceDocument
-from ingestion import parsers
 from ingestion.parsers import parse
 
 SAMPLE_PDF = Path(__file__).parents[2] / "data" / "AcmeTech_Employee_Handbook.pdf"

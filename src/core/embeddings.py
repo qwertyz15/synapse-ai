@@ -1,12 +1,10 @@
-"""Embedding model shared by the Chroma build script and the RAG search tool.
+"""Embedding model shared by ingestion and the RAG search tool.
 
 Both must use the same provider and model, or searches return garbage or fail on a
-vector dimension mismatch. Rebuild the database after changing either setting.
+vector dimension mismatch. The library is re-embedded automatically when either changes.
 """
 
 from langchain_core.embeddings import Embeddings
-from langchain_openai import OpenAIEmbeddings
-from langchain_voyageai import VoyageAIEmbeddings
 
 from core.settings import EmbeddingProvider, settings
 
@@ -30,6 +28,9 @@ def get_embeddings() -> Embeddings:
         case EmbeddingProvider.OPENAI:
             if not settings.OPENAI_API_KEY:
                 raise ValueError("EMBEDDING_PROVIDER=openai requires OPENAI_API_KEY to be set")
+            # Imported here so the ingestion worker loads only the configured provider.
+            from langchain_openai import OpenAIEmbeddings
+
             return OpenAIEmbeddings(
                 model=settings.EMBEDDING_MODEL or DEFAULT_OPENAI_EMBEDDING_MODEL,
                 api_key=settings.OPENAI_API_KEY,
@@ -37,6 +38,8 @@ def get_embeddings() -> Embeddings:
         case EmbeddingProvider.VOYAGE:
             if not settings.VOYAGE_API_KEY:
                 raise ValueError("EMBEDDING_PROVIDER=voyage requires VOYAGE_API_KEY to be set")
+            from langchain_voyageai import VoyageAIEmbeddings
+
             return VoyageAIEmbeddings(
                 model=settings.EMBEDDING_MODEL or DEFAULT_VOYAGE_EMBEDDING_MODEL,
                 api_key=settings.VOYAGE_API_KEY,

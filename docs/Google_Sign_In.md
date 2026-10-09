@@ -68,6 +68,22 @@ without an account (sign-in off) aren't limited. An admin page for changing a us
 next; until then a plan can be changed in the `users` table (`plan` = `free` or `unlimited`,
 `daily_message_limit` to give one account its own daily limit).
 
+## Your own API keys
+
+With `USER_KEYS_SECRET` set, signed-in users can open **Settings** (in the account menu) and add
+their own key for OpenAI, Anthropic, DeepSeek, Google Gemini, Groq or OpenRouter:
+
+- Chats on that provider's models then run on **their** key, so they don't use your credits, don't
+  count toward their daily limit and aren't limited to `FREE_MODELS`.
+- Models from a provider you have no key for become available to that user once they add theirs.
+- Each key is checked with one free request to the provider before it's saved, stored encrypted
+  (AES-GCM) and never shown again, only its last four characters. It's used only while that user's
+  request runs and is never written to chat history or logs.
+
+```env
+USER_KEYS_SECRET=...   # openssl rand -base64 32; keep it stable, or saved keys stop working
+```
+
 ## How it works
 
 - Google OAuth runs in the web UI with state and PKCE. After Google confirms who you are, the web

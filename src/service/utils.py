@@ -13,12 +13,13 @@ from langchain_core.messages import (
 )
 
 from core import settings
+from core.llm import user_key_for
 from schema import ChatMessage
 
 
 def ensure_model_available(model: Any) -> None:
-    """Raise 400 if `model` isn't in the operator's AVAILABLE_MODELS allowlist."""
-    if model not in settings.AVAILABLE_MODELS:
+    """Raise 400 if `model` isn't in AVAILABLE_MODELS and the user has no own key for it."""
+    if model not in settings.AVAILABLE_MODELS and not user_key_for(model):
         raise HTTPException(
             status_code=400,
             detail=f"Model '{model}' is not available. "

@@ -140,7 +140,12 @@ class PlanInfo(BaseModel):
     plan: Literal["admin", "unlimited", "free"]
     messages_today: int
     daily_limit: int | None = Field(description="Messages allowed per UTC day; null for no limit.")
-    models: list[str] | None = Field(description="Models the plan allows; null for every model.")
+    models: list[str] | None = Field(
+        description="Models the account may pick, including those its own keys unlock; null for every model."
+    )
+    own_key_providers: list[str] = Field(
+        default=[], description="Providers the account saved its own key for."
+    )
     max_file_mb: int | None = Field(
         description="Largest file the plan may upload, in MB; null for the server's own limit."
     )

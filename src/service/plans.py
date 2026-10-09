@@ -5,13 +5,16 @@ Admins (ADMIN_EMAILS) and `unlimited` accounts have no daily cap unless an admin
 (sign-in off, or API callers) aren't limited here.
 """
 
+from collections.abc import Collection
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import select
 
 from core import settings
+from core.llm import models_for, provider_of
 from db.engine import async_session_scope
-from db.models import User
+from db.models import User, UserApiKey
 from db.usage import messages_on, today, use_message
 from db.users import get_user
 from schema import PlanInfo, UserInput
@@ -55,32 +58,53 @@ async def upload_limits(user_id: str) -> tuple[int | None, int | None]:
     return max_file_mb(user), library_files(user)
 
 
+def with_own_keys(models: list[str] | None, own_key_providers: list[str]) -> list[str] | None:
+    """Add the models the user's own keys unlock; None (every server model) stays None without keys."""
+    if not own_key_providers:
+        return models
+    base = models if models is not None else sorted(str(m) for m in settings.AVAILABLE_MODELS)
+    extra = [m for p in own_key_providers for m in models_for(p)]
+    return list(dict.fromkeys([*base, *extra]))
+
+
 async def plan_info(user_id: str) -> PlanInfo | None:
     async with async_session_scope() as session:
         user = await get_user(session, user_id)
         if user is None:
             return None
+        own = list(
+            await session.scalars(
+                select(UserApiKey.provider)
+                .where(UserApiKey.user_id == user_id)
+                .order_by(UserApiKey.provider)
+            )
+        )
         return PlanInfo(
             plan=plan_of(user),
             messages_today=await messages_on(session, user_id, today()),
             daily_limit=daily_limit(user),
-            models=allowed_models(user),
+            models=with_own_keys(allowed_models(user), own),
+            own_key_providers=own,
             max_file_mb=max_file_mb(user),
             library_files=library_files(user),
         )
 
 
-async def charge_message(user_input: UserInput) -> None:
+async def charge_message(user_input: UserInput, own_key_providers: Collection[str] = ()) -> None:
     """Check the account may send this message with this model, and count it.
 
     Picks the plan's first model when none was chosen and the default isn't allowed. Raises 403 for
-    a model outside the plan and 429 once the day's messages are used up.
+    a model outside the plan and 429 once the day's messages are used up. A message to a provider
+    the user has their own key for is free: not counted, capped or limited to the plan's models.
     """
     if not user_input.user_id:
         return
     async with async_session_scope() as session:
         user = await get_user(session, user_id=user_input.user_id)
         if user is None:
+            return
+        chosen = str(user_input.model or settings.DEFAULT_MODEL)
+        if provider_of(chosen) in own_key_providers:
             return
         models = allowed_models(user)
         if models is not None:

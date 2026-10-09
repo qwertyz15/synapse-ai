@@ -54,6 +54,7 @@ def test_free_accounts_stop_at_the_daily_limit(test_client, replies, plan_settin
         "messages_today": 2,
         "daily_limit": 2,
         "models": None,
+        "own_key_providers": [],
         "max_file_mb": 5,
         "library_files": 10,
     }

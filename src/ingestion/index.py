@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Collection
 from pathlib import Path
 
 import chromadb
@@ -46,3 +47,17 @@ def replace_document_chunks(store: Chroma, doc_id: str, chunks: list[Document]) 
     delete_document(store, doc_id)
     if chunks:
         store.add_documents(chunks, ids=[chunk.id for chunk in chunks])
+
+
+def reassign_user(store: Chroma, from_user: str, to_user: str, keep: Collection[str] = ()) -> int:
+    """Re-tag a user's chunks with another user id, except files named in `keep`."""
+    found = store.get(where={"user_id": from_user}, include=["metadatas"])
+    ids, metadatas = [], []
+    for chunk_id, metadata in zip(found["ids"], found["metadatas"]):
+        if metadata.get("source") in keep:
+            continue
+        ids.append(chunk_id)
+        metadatas.append({**metadata, "user_id": to_user})
+    if ids:
+        store._collection.update(ids=ids, metadatas=metadatas)
+    return len(ids)

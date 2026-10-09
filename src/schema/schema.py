@@ -111,6 +111,29 @@ class RagDocuments(BaseModel):
     documents: list[RagDocument]
 
 
+class GoogleSignIn(BaseModel):
+    """A verified Google profile, sent by the web UI after the OAuth callback."""
+
+    google_sub: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=3, max_length=320)
+    email_verified: bool
+    name: str | None = Field(default=None, max_length=200)
+    avatar_url: str | None = Field(default=None, max_length=1024)
+    anonymous_user_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description="The browser's anonymous id; its chats and files move to the account.",
+    )
+
+
+class Account(BaseModel):
+    id: str
+    email: str
+    name: str | None = None
+    avatar_url: str | None = None
+    is_admin: bool = False
+
+
 class ThreadRename(BaseModel):
     title: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)

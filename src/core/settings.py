@@ -1,7 +1,7 @@
 import ipaddress
 from enum import StrEnum
 from json import loads
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -69,6 +69,10 @@ def check_str_is_http(x: str) -> str:
     return str(http_url_adapter.validate_python(x))
 
 
+def _email_list(value: str) -> set[str]:
+    return {part.strip().lower() for part in value.split(",") if part.strip()}
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=find_dotenv(),
@@ -85,6 +89,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: LogLevel = LogLevel.WARNING
 
     AUTH_SECRET: SecretStr | None = None
+
+    # Accounts (used when the web UI runs with AUTH_ENABLED=true). Lists are comma-separated;
+    # ALLOWED_EMAILS entries may be whole domains written as "@example.com".
+    ADMIN_EMAILS: str = ""
+    SIGNUPS: Literal["open", "invite", "closed"] = "open"
+    ALLOWED_EMAILS: str = ""
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None
@@ -280,6 +290,12 @@ class Settings(BaseSettings):
 
     def is_dev(self) -> bool:
         return self.MODE == "dev"
+
+    def admin_emails(self) -> set[str]:
+        return _email_list(self.ADMIN_EMAILS)
+
+    def allowed_emails(self) -> set[str]:
+        return _email_list(self.ALLOWED_EMAILS)
 
     def is_local_only(self) -> bool:
         if self.HOST == "localhost":

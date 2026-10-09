@@ -33,6 +33,20 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    """A signed-in account (Google). Anonymous browsers have no row; their id is just a cookie."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    google_sub: Mapped[str] = mapped_column(String(255), unique=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True)
+    name: Mapped[str | None] = mapped_column(String(200))
+    avatar_url: Mapped[str | None] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    last_login_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
 class Chat(Base):
     """One conversation (a LangGraph thread) and who owns it."""
 

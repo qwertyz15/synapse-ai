@@ -51,6 +51,7 @@ from schema import (
     UserThreads,
     UserThreadsInput,
 )
+from service.accounts import router as accounts_router
 from service.agui import router as agui_router
 from service.rag import remove_thread_attachments
 from service.rag import router as rag_router
@@ -139,6 +140,7 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 # AG-UI protocol endpoints inherit the same bearer auth - see service/agui.py
 router.include_router(agui_router)
 router.include_router(rag_router)
+router.include_router(accounts_router)
 
 
 @router.get("/info")

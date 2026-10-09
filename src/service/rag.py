@@ -44,7 +44,7 @@ MAX_TOTAL_UPLOAD_BYTES = 50 * 1024 * 1024
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 # Concurrent runs would race on the manifest and on deleting/re-adding the same chunks.
-_ingestion_lock = asyncio.Lock()
+ingestion_lock = asyncio.Lock()
 
 
 def _data_dir() -> Path:
@@ -52,7 +52,7 @@ def _data_dir() -> Path:
 
 
 async def _ingest() -> IngestionReport:
-    async with _ingestion_lock:
+    async with ingestion_lock:
         try:
             return await run_in_threadpool(
                 run_ingestion, settings.RAG_DATA_DIR, settings.CHROMA_DB_PATH
@@ -187,7 +187,7 @@ async def upload_my_documents(user_id: str, files: list[UploadFile]) -> Ingestio
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
     store = open_user_library(settings.CHROMA_DB_PATH, embeddings)
-    async with _ingestion_lock:
+    async with ingestion_lock:
         for name, content in accepted.items():
             try:
                 chunks = await run_in_threadpool(
@@ -216,7 +216,7 @@ async def upload_my_documents(user_id: str, files: list[UploadFile]) -> Ingestio
 async def delete_my_document(name: str, user_id: str) -> IngestionResult:
     """Remove a file from a user's own library."""
     store = open_user_library(settings.CHROMA_DB_PATH)
-    async with _ingestion_lock:
+    async with ingestion_lock:
         removed_chunks = await run_in_threadpool(delete_user_document, store, user_id, name)
     async with async_session_scope() as session:
         removed_row = await user_rows.delete_user_document(session, user_id, name)
@@ -260,7 +260,7 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
         except ValueError as e:
             raise HTTPException(status_code=503, detail=str(e))
         store = open_attachment_store(settings.CHROMA_DB_PATH, embeddings)
-        async with _ingestion_lock:
+        async with ingestion_lock:
             for name, content in accepted.items():
                 try:
                     chunks = await run_in_threadpool(
@@ -299,7 +299,7 @@ async def attach_to_chat(thread_id: str, user_id: str, files: list[UploadFile]) 
 async def detach_from_chat(name: str, thread_id: str, user_id: str) -> ChatAttachments:
     """Remove a file attached to a chat."""
     store = open_attachment_store(settings.CHROMA_DB_PATH)
-    async with _ingestion_lock:
+    async with ingestion_lock:
         removed_chunks = await run_in_threadpool(delete_attachment, store, thread_id, user_id, name)
     async with async_session_scope() as session:
         removed_row = await chat_rows.delete_attachment(session, thread_id, user_id, name)
@@ -313,5 +313,5 @@ async def remove_thread_attachments(thread_id: str, user_id: str) -> int:
     if not Path(settings.CHROMA_DB_PATH).is_dir():
         return 0
     store = open_attachment_store(settings.CHROMA_DB_PATH)
-    async with _ingestion_lock:
+    async with ingestion_lock:
         return await run_in_threadpool(delete_thread_attachments, store, thread_id, user_id)

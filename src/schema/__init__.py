@@ -1,5 +1,6 @@
 from schema.models import AllModelEnum
 from schema.schema import (
+    Account,
     AgentInfo,
     AttachmentResult,
     ChatAttachment,
@@ -9,6 +10,7 @@ from schema.schema import (
     ChatMessage,
     Feedback,
     FeedbackResponse,
+    GoogleSignIn,
     IngestionResult,
     RagDocument,
     RagDocuments,
@@ -23,6 +25,8 @@ from schema.schema import (
 )
 
 __all__ = [
+    "Account",
+    "GoogleSignIn",
     "AgentInfo",
     "AllModelEnum",
     "UserInput",

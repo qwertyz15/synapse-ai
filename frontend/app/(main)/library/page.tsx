@@ -1,6 +1,15 @@
 "use client";
 
-import { FileTextIcon, Loader2Icon, MenuIcon, PanelLeftIcon, Trash2Icon, UploadCloudIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  FileTextIcon,
+  Loader2Icon,
+  MenuIcon,
+  PanelLeftIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+  UploadCloudIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -18,8 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteDocument, listDocuments, uploadDocuments } from "@/lib/api";
-import type { IngestionResult, RagDocument } from "@/lib/types";
+import { deleteDocument, dismissJob, listDocuments, listJobs, retryJob, uploadDocuments } from "@/lib/api";
+import type { IngestionResult, RagDocument, UploadJob } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
@@ -49,6 +58,9 @@ export default function LibraryPage() {
   const mine = docs?.filter((d) => !d.shared) ?? null;
   const shared = docs?.filter((d) => d.shared) ?? [];
 
+  const [jobs, setJobs] = useState<UploadJob[]>([]);
+  const active = jobs.some((j) => j.status === "queued" || j.status === "indexing");
+
   const refresh = useCallback(() => {
     listDocuments()
       .then((d) => {
@@ -56,9 +68,36 @@ export default function LibraryPage() {
         setLoadError(null);
       })
       .catch((err: Error) => setLoadError(err.message));
+    listJobs()
+      .then(setJobs)
+      .catch(() => undefined);
   }, []);
 
   useEffect(refresh, [refresh]);
+
+  // While uploads are being indexed in the background, check on them and pick up finished files.
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(refresh, 2000);
+    return () => window.clearInterval(timer);
+  }, [active, refresh]);
+
+  const retry = async (job: UploadJob) => {
+    try {
+      await retryJob(job.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't retry the upload");
+    }
+    refresh();
+  };
+
+  const dismiss = async (job: UploadJob) => {
+    try {
+      setJobs((await dismissJob(job.id)).jobs);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't remove the upload");
+    }
+  };
 
   const upload = async (files: File[]) => {
     if (!files.length || uploading) return;
@@ -71,7 +110,12 @@ export default function LibraryPage() {
     try {
       const result = await uploadDocuments(ok);
       setProblems([...local, ...Object.entries(result.rejected), ...Object.entries(result.failed)]);
-      toast.success(`${summarize(result)} · ${result.chunks_written} chunks indexed`);
+      if (result.queued.length) {
+        const n = result.queued.length;
+        toast.success(`Indexing ${n} file${n === 1 ? "" : "s"} in the background`);
+      } else {
+        toast.success(`${summarize(result)} · ${result.chunks_written} chunks indexed`);
+      }
       refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -172,6 +216,50 @@ export default function LibraryPage() {
                 ))}
               </ul>
             </div>
+          )}
+
+          {jobs.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-medium">Uploads</h2>
+              <ul className="divide-y rounded-xl border">
+                {jobs.map((job) => (
+                  <li key={job.id} className="flex items-center gap-3 px-4 py-3">
+                    {job.status === "failed" ? (
+                      <AlertCircleIcon className="size-5 shrink-0 text-destructive" />
+                    ) : (
+                      <Loader2Icon className="size-5 shrink-0 animate-spin text-muted-foreground" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{job.name}</p>
+                      <p
+                        className={cn(
+                          "text-xs",
+                          job.status === "failed" ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {job.status === "failed"
+                          ? (job.error ?? "Indexing failed")
+                          : job.status === "indexing"
+                            ? "Indexing…"
+                            : job.error
+                              ? `Waiting to retry: ${job.error}`
+                              : "Queued"}
+                      </p>
+                    </div>
+                    {job.status === "failed" && (
+                      <>
+                        <IconButton label="Retry" size="icon-sm" onClick={() => retry(job)}>
+                          <RotateCcwIcon />
+                        </IconButton>
+                        <IconButton label="Remove" size="icon-sm" onClick={() => dismiss(job)}>
+                          <Trash2Icon />
+                        </IconButton>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           <section>

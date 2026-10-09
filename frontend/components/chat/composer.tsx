@@ -45,7 +45,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, [text]);
 
-  const canSend = text.trim().length > 0 && !streaming && !disabled;
+  // Files still uploading or indexing can't be searched yet, so the message waits for them.
+  const indexing = chat.pending.length > 0;
+  const canSend = text.trim().length > 0 && !streaming && !disabled && !indexing;
 
   const submit = () => {
     if (!canSend) return;
@@ -90,7 +92,14 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             <SquareIcon className="size-3.5 fill-current" />
           </Button>
         ) : (
-          <Button type="submit" size="icon" className="rounded-full" disabled={!canSend} aria-label="Send message">
+          <Button
+            type="submit"
+            size="icon"
+            className="rounded-full"
+            disabled={!canSend}
+            aria-label={indexing ? "Waiting for attachments to finish indexing" : "Send message"}
+            title={indexing ? "Waiting for attachments to finish indexing" : undefined}
+          >
             <ArrowUpIcon />
           </Button>
         )}

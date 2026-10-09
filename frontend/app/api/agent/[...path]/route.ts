@@ -34,6 +34,9 @@ const ROUTES: Route[] = [
   { method: "POST", pattern: /^rag\/my-documents$/, userId: "query", limit: "upload", maxBytes: 60 * MB },
   { method: "DELETE", pattern: /^rag\/my-documents\/[^/]+$/, userId: "query" },
   { method: "GET", pattern: /^rag\/attachments$/, userId: "query" },
+  { method: "GET", pattern: /^rag\/jobs$/, userId: "query" },
+  { method: "POST", pattern: /^rag\/jobs\/[0-9a-f-]{36}\/retry$/, userId: "query" },
+  { method: "DELETE", pattern: /^rag\/jobs\/[0-9a-f-]{36}$/, userId: "query" },
   { method: "POST", pattern: /^rag\/attachments$/, userId: "query", limit: "upload", maxBytes: 60 * MB },
   { method: "DELETE", pattern: /^rag\/attachments\/.+$/, userId: "query" },
 ];

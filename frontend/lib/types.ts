@@ -48,6 +48,8 @@ export type IngestionResult = {
   updated: string[];
   deleted: string[];
   unchanged: string[];
+  /** Accepted and waiting to be indexed in the background. */
+  queued: string[];
   failed: Record<string, string>;
   rejected: Record<string, string>;
   chunks_written: number;
@@ -78,6 +80,8 @@ export type ChatAttachment = {
 export type AttachmentResult = {
   attachments: ChatAttachment[];
   attached: string[];
+  /** Accepted and waiting to be indexed in the background. */
+  queued: string[];
   failed: Record<string, string>;
   rejected: Record<string, string>;
 };
@@ -117,4 +121,15 @@ export type AdminUserUpdate = {
   plan?: "free" | "unlimited";
   daily_message_limit?: number | null;
   blocked?: boolean;
+};
+
+export type UploadJob = {
+  id: string;
+  name: string;
+  kind: "library" | "attachment";
+  thread_id: string | null;
+  status: "queued" | "indexing" | "ready" | "failed";
+  error: string | null;
+  created_at: string;
+  updated_at: string;
 };

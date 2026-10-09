@@ -13,6 +13,7 @@ import type {
   UserKeys,
   AdminUser,
   AdminUserUpdate,
+  UploadJob,
 } from "./types";
 
 const BASE = "/api/agent";
@@ -123,6 +124,14 @@ export const deleteDocument = (name: string) =>
   request<IngestionResult>(`rag/my-documents/${encodeURIComponent(name)}`, { method: "DELETE" });
 
 const threadQuery = (threadId: string) => `thread_id=${encodeURIComponent(threadId)}`;
+
+/** Uploads still queued or indexing, or that failed: for the library, or one chat's attachments. */
+export const listJobs = (threadId?: string) =>
+  request<{ jobs: UploadJob[] }>(threadId ? `rag/jobs?${threadQuery(threadId)}` : "rag/jobs").then((r) => r.jobs);
+
+export const retryJob = (id: string) => request<UploadJob>(`rag/jobs/${id}/retry`, { method: "POST" });
+
+export const dismissJob = (id: string) => request<{ jobs: UploadJob[] }>(`rag/jobs/${id}`, { method: "DELETE" });
 
 export const listAttachments = (threadId: string) =>
   request<{ attachments: ChatAttachment[] }>(`rag/attachments?${threadQuery(threadId)}`).then((r) => r.attachments);

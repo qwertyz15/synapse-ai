@@ -237,6 +237,30 @@ it("calls admin endpoints as the browser's user and only for real account ids", 
   expect(urls).toHaveLength(2);
 });
 
+it("lists, retries and dismisses upload jobs as the browser's user", async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL) => {
+      urls.push(String(input));
+      return Response.json({ jobs: [] });
+    }),
+  );
+  const id = "de2bfc7d-ade3-46ff-b1e4-140a49ab1ff4";
+  const call = (method: "GET" | "POST" | "DELETE", path: string[]) => {
+    const req = new NextRequest(`http://localhost:3000/api/agent/${path.join("/")}?user_id=spoofed`, { method });
+    req.cookies.set("uid", "browser-1");
+    const handler = { GET, POST, DELETE }[method];
+    return handler(req, { params: Promise.resolve({ path }) });
+  };
+  await call("GET", ["rag", "jobs"]);
+  await call("POST", ["rag", "jobs", id, "retry"]);
+  await call("DELETE", ["rag", "jobs", id]);
+  expect(urls.map((u) => new URL(u).searchParams.get("user_id"))).toEqual(["browser-1", "browser-1", "browser-1"]);
+  expect((await call("POST", ["rag", "jobs", "not-a-job", "retry"])).status).toBe(404);
+  expect(urls).toHaveLength(3);
+});
+
 it("scopes the document library to the browser's user", async () => {
   const urls: string[] = [];
   vi.stubGlobal(

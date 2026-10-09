@@ -15,6 +15,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # Vector store. Vectors, payload and the index live on disk (see src/ingestion/vectors.py), so a
+  # modest memory cap is enough; raise QDRANT_MEMORY_LIMIT for large document collections.
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    volumes:
+      - qdrant_data:/qdrant/storage
+    mem_limit: ${QDRANT_MEMORY_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   agent_service:
     build:
       context: .
@@ -31,11 +44,14 @@ services:
       - DATABASE_TYPE=postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
+      - QDRANT_URL=http://qdrant:6333
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB:-agent_service}
     depends_on:
       postgres:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
@@ -138,3 +154,4 @@ services:
 
 volumes:
   postgres_data:
+  qdrant_data:

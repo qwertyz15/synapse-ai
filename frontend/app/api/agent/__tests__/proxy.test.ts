@@ -108,6 +108,35 @@ it("asks for chat history as the browser's user", async () => {
   expect(sent[0].body).toEqual({ thread_id: "t1", user_id: "browser-1" });
 });
 
+it("rate-limits chats per browser user", async () => {
+  vi.stubEnv("RATE_LIMIT_CHATS_PER_HOUR", "2");
+  mockService();
+  const statuses = [];
+  for (let i = 0; i < 3; i++) {
+    const req = new NextRequest("http://localhost:3000/api/agent/chatbot/stream", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.7" },
+      body: JSON.stringify({ message: "hi", thread_id: "t" }),
+    });
+    req.cookies.set("uid", "limited-user");
+    statuses.push((await POST(req, { params: Promise.resolve({ path: ["chatbot", "stream"] }) })).status);
+  }
+  expect(statuses).toEqual([200, 200, 429]);
+});
+
+it("refuses oversized requests without forwarding them", async () => {
+  const sent = mockService();
+  const req = new NextRequest("http://localhost:3000/api/agent/chatbot/stream", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ message: "x".repeat(300 * 1024), thread_id: "t" }),
+  });
+  req.cookies.set("uid", "big-sender");
+  const res = await POST(req, { params: Promise.resolve({ path: ["chatbot", "stream"] }) });
+  expect(res.status).toBe(413);
+  expect(sent).toHaveLength(0);
+});
+
 it("scopes the document library to the browser's user", async () => {
   const urls: string[] = [];
   vi.stubGlobal(

@@ -118,6 +118,7 @@ likely to set:
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `VOYAGE_API_KEY` | Document search: `openai` (uses `OPENAI_API_KEY`) or `voyage` |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_APP_SLUG`, `WEB_SESSION_SECRET` | Connect GitHub; see [GitHub setup](docs/GitHub_MCP_Agent.md) |
 | `AUTH_SECRET` | Bearer token for the agent service API; required whenever it listens beyond localhost, including Docker |
+| `RATE_LIMIT_CHATS_PER_HOUR`, `RATE_LIMIT_CHATS_PER_MINUTE_GLOBAL`, `RATE_LIMIT_UPLOADS_PER_HOUR` | Web UI usage limits per user (IPs get 3x); defaults 60, 120 and 20, `0` turns one off |
 | `OPENWEATHERMAP_API_KEY` | The weather tool |
 | `GROQ_API_KEY` | Content moderation (LlamaGuard safeguard) |
 | `DATABASE_TYPE` | Chat storage: `sqlite` (default, `checkpoints.db`), `postgres` or `mongo` |

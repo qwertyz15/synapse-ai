@@ -54,7 +54,8 @@ env_value() {
 (
     cd frontend
     export AGENT_URL="http://localhost:$PORT"
-    for key in AUTH_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET GITHUB_APP_SLUG WEB_SESSION_SECRET; do
+    for key in AUTH_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET GITHUB_APP_SLUG WEB_SESSION_SECRET \
+        RATE_LIMIT_CHATS_PER_HOUR RATE_LIMIT_CHATS_PER_MINUTE_GLOBAL RATE_LIMIT_UPLOADS_PER_HOUR; do
         export "$key=$(cd .. && env_value "$key")"
     done
     npm run dev -- --port "$WEB_PORT"

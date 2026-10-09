@@ -39,6 +39,27 @@ meaning-only search put the right chunk in the top 5 for 12 of 15 questions; hyb
 Words are split on anything that isn't a letter, digit or combining mark, so scripts such as Bangla
 or Hindi work; there's no stemming, so "policy" and "policies" only meet through the meaning side.
 
+## Reranking
+
+Search is fast but scores each chunk on its own; a reranker reads the question and each passage
+together, so it can tell a passage that *answers* the question from one that only shares its words.
+Turn it on with:
+
+```
+RERANKER=voyage
+RERANK_MODEL=rerank-2.5-lite   # or rerank-2.5: a little more accurate, about 3x slower
+```
+
+It uses the same `VOYAGE_API_KEY` as the embeddings. Each source (chat attachments, your library,
+the shared library) returns `RERANK_CANDIDATES` passages (20); the reranker keeps the best
+`RERANK_TOP_K` (6) across all of them. If the reranker fails or times out (10 s), search falls back
+to each source's top 5, as without reranking, so an outage never breaks document search.
+
+In a test with real embeddings, where every right answer had three passages sharing its words but
+not answering (for "Do I need a doctor's note for sick days?", one passage was about the company
+doctor and another about meeting notes), hybrid search ranked the answer first for 3 of 10 questions;
+with `rerank-2.5-lite` on top, 9 of 10, adding about 0.5 s per search.
+
 ## Background indexing
 
 Uploads from the Library and chat attachments become **jobs** (`ingestion_jobs` table): the file is

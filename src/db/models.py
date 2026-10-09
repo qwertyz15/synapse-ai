@@ -3,7 +3,7 @@ chunks in ChromaDB; these tables index and describe them."""
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
 
@@ -46,6 +46,7 @@ class User(Base):
     plan: Mapped[str] = mapped_column(String(16), default="free")
     # Overrides the plan's daily message limit for this account when set.
     daily_message_limit: Mapped[int | None] = mapped_column(Integer)
+    blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     last_login_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 

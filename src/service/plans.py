@@ -18,7 +18,7 @@ from db.models import User, UserApiKey
 from db.usage import messages_on, today, use_message
 from db.users import get_user
 from schema import PlanInfo, UserInput
-from service.accounts import is_admin
+from service.accounts import BLOCKED, is_admin, is_blocked
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,6 +55,8 @@ async def upload_limits(user_id: str) -> tuple[int | None, int | None]:
     """(largest file in MB, library file cap) for this user; None means no plan limit."""
     async with async_session_scope() as session:
         user = await get_user(session, user_id)
+    if user is not None and is_blocked(user):
+        raise HTTPException(status_code=403, detail=BLOCKED)
     return max_file_mb(user), library_files(user)
 
 
@@ -103,6 +105,8 @@ async def charge_message(user_input: UserInput, own_key_providers: Collection[st
         user = await get_user(session, user_id=user_input.user_id)
         if user is None:
             return
+        if is_blocked(user):
+            raise HTTPException(status_code=403, detail=BLOCKED)
         chosen = str(user_input.model or settings.DEFAULT_MODEL)
         if provider_of(chosen) in own_key_providers:
             return

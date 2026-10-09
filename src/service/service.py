@@ -53,6 +53,7 @@ from schema import (
     UserThreadsInput,
 )
 from service.accounts import router as accounts_router
+from service.admin import router as admin_router
 from service.agui import router as agui_router
 from service.plans import charge_message
 from service.plans import router as plans_router
@@ -146,6 +147,7 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 router.include_router(agui_router)
 router.include_router(rag_router)
 router.include_router(accounts_router)
+router.include_router(admin_router)
 router.include_router(plans_router)
 router.include_router(user_keys_router)
 

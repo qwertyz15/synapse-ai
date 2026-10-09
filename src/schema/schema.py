@@ -175,6 +175,33 @@ class UserKeys(BaseModel):
     keys: list[UserKey]
 
 
+class AdminUser(BaseModel):
+    id: str
+    email: str
+    name: str | None
+    avatar_url: str | None
+    plan: Literal["admin", "unlimited", "free"] = Field(description="The plan in effect.")
+    daily_message_limit: int | None = Field(description="This account's own limit, if set.")
+    effective_limit: int | None = Field(description="Messages allowed today; null for no limit.")
+    messages_today: int
+    own_key_providers: list[str]
+    blocked: bool
+    created_at: datetime
+    last_login_at: datetime
+
+
+class AdminUsers(BaseModel):
+    users: list[AdminUser]
+
+
+class AdminUserUpdate(BaseModel):
+    """Fields to change; leave a field out to keep it. `daily_message_limit: null` clears it."""
+
+    plan: Literal["free", "unlimited"] | None = None
+    daily_message_limit: int | None = Field(default=None, ge=0, le=100_000)
+    blocked: bool | None = None
+
+
 class ThreadRename(BaseModel):
     title: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)

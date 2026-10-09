@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from core import settings
@@ -24,6 +25,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def is_admin(email: str) -> bool:
     return email.lower() in settings.admin_emails()
+
+
+def is_blocked(user: User) -> bool:
+    return user.blocked and not is_admin(user.email)
+
+
+BLOCKED = "This account has been blocked. Contact the person who runs this app."
 
 
 def may_join(email: str) -> bool:
@@ -60,8 +68,8 @@ async def _claim_anonymous(from_user: str, to_user: str) -> None:
             await run_in_threadpool(reassign_user, store, from_user, to_user, keep)
 
 
-@router.post("/sign-in")
-async def sign_in(profile: GoogleSignIn) -> Account:
+@router.post("/sign-in", response_model=Account)
+async def sign_in(profile: GoogleSignIn) -> Account | JSONResponse:
     """Create or update the account for a Google profile and return it.
 
     Refused with 403 when sign-ups don't allow this email. The browser's anonymous chats and
@@ -76,6 +84,8 @@ async def sign_in(profile: GoogleSignIn) -> Account:
             raise HTTPException(
                 status_code=403, detail="This app is invite-only, and your email isn't on the list."
             )
+        if existing is not None and is_blocked(existing):
+            return JSONResponse(status_code=403, content={"detail": BLOCKED, "code": "blocked"})
         user = await save_google_user(
             session,
             existing,

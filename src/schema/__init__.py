@@ -1,6 +1,9 @@
 from schema.models import AllModelEnum
 from schema.schema import (
     Account,
+    AdminUser,
+    AdminUsers,
+    AdminUserUpdate,
     AgentInfo,
     AttachmentResult,
     ChatAttachment,
@@ -30,6 +33,9 @@ from schema.schema import (
 
 __all__ = [
     "Account",
+    "AdminUser",
+    "AdminUsers",
+    "AdminUserUpdate",
     "GoogleSignIn",
     "PlanInfo",
     "AgentInfo",

@@ -65,6 +65,17 @@ async def list_chats(
     return (await session.scalars(query)).all()
 
 
+async def replace_title(
+    session: AsyncSession, thread_id: str, expected: str | None, title: str
+) -> bool:
+    """Set the title only if it's still `expected`, so a title set meanwhile is kept."""
+    chat = await session.get(Chat, thread_id)
+    if chat is None or chat.title != expected:
+        return False
+    chat.title = title
+    return True
+
+
 async def rename_chat(
     session: AsyncSession, thread_id: str, user_id: str, agent_id: str, title: str
 ) -> Chat | None:

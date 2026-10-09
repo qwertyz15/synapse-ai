@@ -120,6 +120,9 @@ class Settings(BaseSettings):
     RAG_CHUNK_SIZE: int = 2000
     RAG_CHUNK_OVERLAP: int = 500
 
+    # Name each new chat with a few words from the chat's model (one short extra call per chat).
+    GENERATE_CHAT_TITLES: bool = True
+
     # MCP Configuration
     GITHUB_PAT: SecretStr | None = None
     MCP_GITHUB_SERVER_URL: str = "https://api.githubcopilot.com/mcp/"

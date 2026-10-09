@@ -36,3 +36,12 @@ def app_database(tmp_path):
 
     with patch.object(settings, "APP_DATABASE_URL", f"sqlite:///{tmp_path / 'app.db'}"):
         yield
+
+
+@pytest.fixture(autouse=True)
+def no_generated_titles():
+    """Titles would call a real model in the background; tests that need them turn them on."""
+    from core.settings import settings
+
+    with patch.object(settings, "GENERATE_CHAT_TITLES", False):
+        yield

@@ -55,6 +55,7 @@ from service.agui import router as agui_router
 from service.rag import remove_thread_attachments
 from service.rag import router as rag_router
 from service.threads import thread_owner
+from service.titles import name_chat_later
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
@@ -189,12 +190,16 @@ async def _claim_thread(user_input: UserInput, agent_id: str) -> None:
     user_input.thread_id = user_input.thread_id or str(uuid4())
     try:
         async with async_session_scope() as session:
+            is_new = await get_chat(session, user_input.thread_id) is None
             chat = await claim_chat(
                 session, user_input.thread_id, user_input.user_id, agent_id, user_input.message
             )
+            placeholder = chat.title
         user_input.user_id = chat.user_id
     except ChatAccessError:
         raise HTTPException(status_code=404, detail="Thread not found")
+    if is_new:
+        name_chat_later(chat.thread_id, placeholder, user_input.message, user_input.model)
 
 
 async def _handle_input(

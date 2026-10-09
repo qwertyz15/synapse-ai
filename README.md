@@ -54,8 +54,9 @@ choose the model, from hosted APIs to local models served by Ollama, vLLM or SGL
   you can expand, stop and retry, light and dark themes, and a mobile layout.
 - **Research assistant**: picks the right tools on its own and combines them in one answer:
   document search, web search, calculator, weather, and GitHub when connected.
-- **Library**: documents searchable from every chat (PDF, Word, text, Markdown), indexed
-  incrementally into ChromaDB.
+- **Your library**: each user's own documents (PDF, Word, text, Markdown), private to them and
+  searchable from all their chats. A shared library you manage from the `data/` folder is searchable by
+  everyone but can't be changed from the web UI.
 - **Chat attachments**: files attached to one conversation are searchable only there, alongside the
   library, and are shown on the message they were sent with.
 - **Connectors (MCP)**: **+ → Connectors → GitHub** adds GitHub tools to a chat. Each user connects
@@ -86,7 +87,7 @@ and stops both on Ctrl+C or if either one exits.
 
 | Option | What it does |
 |---|---|
-| `./run.sh --ingest` | Index the files in `data/` into the library before starting |
+| `./run.sh --ingest` | Index the files in `data/` into the shared library before starting |
 | `./run.sh --streamlit` | Also start the legacy Streamlit app on port 8501 |
 | `PORT=8090 WEB_PORT=3001 ./run.sh` | Use different ports |
 
@@ -98,7 +99,8 @@ To try the UI without spending API credits, set `USE_FAKE_MODEL=true` in `.env`.
 |---|---|
 | Ask anything | Type in the message box. Tool steps such as "Searched documents ✓" appear as the assistant works; click one to see its input and output. |
 | Use a file in one chat | **+ → Attach to this chat**. It appears on your next message and stays searchable for the whole conversation. |
-| Use a file in every chat | **+ → Add to document library**, or open **Library** in the sidebar. |
+| Use a file in all your chats | **+ → Add to my library**, or open **Library** in the sidebar. Only you can see it. |
+| Share a file with everyone | Put it in `data/` and run `./run.sh --ingest` (or `scripts/ingest.py`). |
 | Work with GitHub | **+ → Connectors → GitHub** (connect first if asked), then ask e.g. "List the recent commits in owner/repo". |
 | Let it change things on GitHub | Sidebar **@username → Allow changes**. Without it, every GitHub call is read-only. |
 | Delete a chat | Hover over it in the sidebar, then **⋯ → Delete**. Its attached files are removed too. |
@@ -119,7 +121,7 @@ likely to set:
 | `OPENWEATHERMAP_API_KEY` | The weather tool |
 | `GROQ_API_KEY` | Content moderation (LlamaGuard safeguard) |
 | `DATABASE_TYPE` | Chat storage: `sqlite` (default, `checkpoints.db`), `postgres` or `mongo` |
-| `APP_DATABASE_URL` | The app's own tables (chats, attachments, library index); defaults to `sqlite:///app.db`, or Postgres when `DATABASE_TYPE=postgres` |
+| `APP_DATABASE_URL` | The app's own tables (chats, attachments, library indexes); defaults to `sqlite:///app.db`, or Postgres when `DATABASE_TYPE=postgres` |
 
 Provider-specific guides: [Ollama](docs/Ollama.md) ·
 [local GPUs with vLLM / SGLang](docs/Local_GPU_Deployment.md) · [Vertex AI](docs/VertexAI.md) ·
@@ -134,7 +136,7 @@ flowchart LR
     S --> A[LangGraph agents]
     A --> T["Tools: DocumentSearch, WebSearch,<br/>Calculator, Weather"]
     A --> G[GitHub MCP server]
-    T --> C[("ChromaDB<br/>library + chat attachments")]
+    T --> C[("ChromaDB<br/>shared + personal libraries,<br/>chat attachments")]
     S --> M[("Chat history<br/>SQLite / Postgres / MongoDB")]
 ```
 
@@ -145,8 +147,9 @@ flowchart LR
   chats with the GitHub connector on, and passed to the GitHub tools as run context, which is never
   saved with the conversation.
 - **Documents** are parsed (pypdf, docx2txt), cleaned, split into ~2,000-character chunks and
-  embedded into ChromaDB. The library lives in the `rag_documents` collection; chat attachments live
-  in `chat_attachments`, tagged with their chat and user. A search returns the best-matching
+  embedded into ChromaDB. The shared library lives in the `rag_documents` collection, each user's
+  own library in `user_library` (tagged with the user), and chat attachments in `chat_attachments`
+  (tagged with their chat and user). A search returns the best-matching
   passages, never whole files.
 - **Conversation memory**: every message, tool call and tool result in a chat is saved and sent back
   to the model on each turn.
@@ -213,7 +216,8 @@ The service's OpenAPI docs are at <http://localhost:8080/redoc>. Main endpoints:
 |---|---|
 | `POST /{agent}/stream`, `POST /{agent}/invoke` | Chat (streaming or a single reply) |
 | `POST /{agent}/history`, `GET /{agent}/threads`, `GET /chats`, `DELETE /{agent}/threads/{thread_id}` | Chat history, list (per agent or all) and delete |
-| `GET/POST/DELETE /rag/documents` | Library documents |
+| `GET/POST/DELETE /rag/my-documents` | A user's own library (`user_id` query parameter) |
+| `GET/POST/DELETE /rag/documents` | The shared library (API only; the web UI can't change it) |
 | `GET/POST/DELETE /rag/attachments` | Files attached to one chat |
 | `GET /info` | Available agents and models |
 | `POST /agui/{agent}/run` | [AG-UI protocol](docs/AGUI.md) |

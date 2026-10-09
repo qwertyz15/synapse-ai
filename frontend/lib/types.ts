@@ -40,6 +40,7 @@ export type RagDocument = {
   file_type: string;
   chunk_count: number;
   ingested_at: string;
+  shared: boolean;
 };
 
 export type IngestionResult = {

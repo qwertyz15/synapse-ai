@@ -68,18 +68,17 @@ export async function getAllThreads(agents: string[], limit = 100): Promise<Thre
 export const sendFeedback = (runId: string, score: number) =>
   request("feedback", json({ run_id: runId, key: "human-feedback-thumbs", score }));
 
-export const listDocuments = () => request<{ documents: RagDocument[] }>("rag/documents").then((r) => r.documents);
+/** The user's own documents, followed by the shared library (`shared: true`, read-only). */
+export const listDocuments = () => request<{ documents: RagDocument[] }>("rag/my-documents").then((r) => r.documents);
 
 export function uploadDocuments(files: File[]) {
   const form = new FormData();
   for (const f of files) form.append("files", f);
-  return request<IngestionResult>("rag/documents", { method: "POST", body: form });
+  return request<IngestionResult>("rag/my-documents", { method: "POST", body: form });
 }
 
-export const deleteDocument = (docId: string) =>
-  request<IngestionResult>(`rag/documents/${docId.split("/").map(encodeURIComponent).join("/")}`, {
-    method: "DELETE",
-  });
+export const deleteDocument = (name: string) =>
+  request<IngestionResult>(`rag/my-documents/${encodeURIComponent(name)}`, { method: "DELETE" });
 
 const threadQuery = (threadId: string) => `thread_id=${encodeURIComponent(threadId)}`;
 

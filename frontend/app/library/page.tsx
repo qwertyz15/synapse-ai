@@ -45,6 +45,8 @@ export default function LibraryPage() {
   const [pendingDelete, setPendingDelete] = useState<RagDocument | null>(null);
   const [deleting, setDeleting] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const mine = docs?.filter((d) => !d.shared) ?? null;
+  const shared = docs?.filter((d) => d.shared) ?? [];
 
   const refresh = useCallback(() => {
     listDocuments()
@@ -110,8 +112,8 @@ export default function LibraryPage() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-8 px-4 pt-4 pb-12">
           <p className="text-sm text-muted-foreground">
-            Files in your library are searchable from every chat by the Research and RAG assistants. To use a file in
-            just one conversation, attach it with + in that chat instead.
+            Files in your library are private to you and searchable from all your chats by the Research and RAG
+            assistants. To use a file in just one conversation, attach it with + in that chat instead.
           </p>
 
           <div
@@ -168,7 +170,7 @@ export default function LibraryPage() {
           )}
 
           <section>
-            <h2 className="mb-3 text-sm font-medium">Indexed documents{docs ? ` (${docs.length})` : ""}</h2>
+            <h2 className="mb-3 text-sm font-medium">Your documents{mine ? ` (${mine.length})` : ""}</h2>
             {loadError ? (
               <div className="flex items-center justify-between gap-3 rounded-xl border p-4 text-sm">
                 <span className="text-destructive">{loadError}</span>
@@ -176,36 +178,30 @@ export default function LibraryPage() {
                   Retry
                 </Button>
               </div>
-            ) : docs === null ? (
+            ) : mine === null ? (
               <div className="space-y-2">
                 {[0, 1, 2].map((i) => (
                   <Skeleton key={i} className="h-14 rounded-xl" />
                 ))}
               </div>
-            ) : docs.length === 0 ? (
+            ) : mine.length === 0 ? (
               <p className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
                 Your library is empty. Upload a document to get started.
               </p>
             ) : (
-              <ul className="divide-y rounded-xl border">
-                {docs.map((d) => (
-                  <li key={d.doc_id} className="flex items-center gap-3 px-4 py-3">
-                    <FileTextIcon className="size-5 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{d.doc_id}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {d.file_type.toUpperCase()} · {d.chunk_count} chunks · added{" "}
-                        {new Date(d.ingested_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <IconButton label="Delete" size="icon-sm" onClick={() => setPendingDelete(d)}>
-                      <Trash2Icon />
-                    </IconButton>
-                  </li>
-                ))}
-              </ul>
+              <DocumentList docs={mine} onDelete={setPendingDelete} />
             )}
           </section>
+
+          {shared.length > 0 && (
+            <section>
+              <h2 className="mb-1 text-sm font-medium">Shared library ({shared.length})</h2>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Added by whoever runs this app. Every chat can search them; they can&apos;t be changed here.
+              </p>
+              <DocumentList docs={shared} />
+            </section>
+          )}
         </div>
       </div>
 
@@ -214,8 +210,7 @@ export default function LibraryPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this document?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDelete?.doc_id} will be removed from the data folder and the search index. This can&apos;t be
-              undone.
+              {pendingDelete?.doc_id} will be removed from your library. This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -227,5 +222,28 @@ export default function LibraryPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function DocumentList({ docs, onDelete }: { docs: RagDocument[]; onDelete?: (doc: RagDocument) => void }) {
+  return (
+    <ul className="divide-y rounded-xl border">
+      {docs.map((d) => (
+        <li key={d.doc_id} className="flex items-center gap-3 px-4 py-3">
+          <FileTextIcon className="size-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{d.doc_id}</p>
+            <p className="text-xs text-muted-foreground">
+              {d.file_type.toUpperCase()} · {d.chunk_count} chunks · added {new Date(d.ingested_at).toLocaleString()}
+            </p>
+          </div>
+          {onDelete && (
+            <IconButton label="Delete" size="icon-sm" onClick={() => onDelete(d)}>
+              <Trash2Icon />
+            </IconButton>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

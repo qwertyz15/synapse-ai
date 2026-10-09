@@ -62,7 +62,7 @@ export function AttachMenu({
       const result = await uploadDocuments(files);
       const indexed = result.new.length + result.updated.length + result.unchanged.length;
       const problems = { ...result.rejected, ...result.failed };
-      if (indexed) toast.success(`Added ${indexed} document${indexed === 1 ? "" : "s"} to the library`);
+      if (indexed) toast.success(`Added ${indexed} document${indexed === 1 ? "" : "s"} to your library`);
       for (const [name, reason] of Object.entries(problems)) toast.error(`${name}: ${reason}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -109,8 +109,8 @@ export function AttachMenu({
           <DropdownMenuItem onClick={() => libraryInput.current?.click()}>
             <LibraryIcon />
             <div className="flex flex-col">
-              <span>Add to document library</span>
-              <span className="text-xs text-muted-foreground">Searchable from every chat</span>
+              <span>Add to my library</span>
+              <span className="text-xs text-muted-foreground">Private, searchable from all your chats</span>
             </div>
           </DropdownMenuItem>
           {canConnect && (

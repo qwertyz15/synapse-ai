@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-import { GET, POST } from "../[...path]/route";
+import { DELETE, GET, POST } from "../[...path]/route";
 import { SESSION_COOKIE, githubConfig, seal, type GithubSession } from "@/lib/server/github-session";
 
 type Sent = { url: string; headers: Headers; body: Record<string, unknown> };
@@ -94,6 +94,37 @@ it("scopes chat attachment requests to the browser's user id", async () => {
   expect(sent.pathname).toBe("/rag/attachments");
   expect(sent.searchParams.get("thread_id")).toBe("t1");
   expect(sent.searchParams.get("user_id")).toBe("browser-1");
+});
+
+it("scopes the document library to the browser's user", async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL) => {
+      urls.push(String(input));
+      return Response.json({ documents: [] });
+    }),
+  );
+  const req = new NextRequest("http://localhost:3000/api/agent/rag/my-documents?user_id=spoofed");
+  req.cookies.set("uid", "browser-1");
+  await GET(req, { params: Promise.resolve({ path: ["rag", "my-documents"] }) });
+  const sent = new URL(urls[0]);
+  expect(sent.pathname).toBe("/rag/my-documents");
+  expect(sent.searchParams.get("user_id")).toBe("browser-1");
+});
+
+it("doesn't let visitors change the shared library", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  const upload = await POST(new NextRequest("http://localhost:3000/api/agent/rag/documents", { method: "POST" }), {
+    params: Promise.resolve({ path: ["rag", "documents"] }),
+  });
+  const remove = await DELETE(
+    new NextRequest("http://localhost:3000/api/agent/rag/documents/handbook.pdf", { method: "DELETE" }),
+    { params: Promise.resolve({ path: ["rag", "documents", "handbook.pdf"] }) },
+  );
+  expect([upload.status, remove.status]).toEqual([404, 404]);
+  expect(fetchMock).not.toHaveBeenCalled();
 });
 
 it("lists every chat with one request scoped to the browser's user", async () => {

@@ -82,12 +82,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [github, setGithub] = useState<GithubStatus | null>(null);
   const [githubWrite, setGithubWriteState] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
+  const [accountChecked, setAccountChecked] = useState(false);
   const [plan, setPlan] = useState<PlanInfo | null>(null);
+  const [planChecked, setPlanChecked] = useState(false);
 
   useEffect(() => {
     getAccount()
       .then((me) => setAccount(me.account))
-      .catch(() => setAccount(null));
+      .catch(() => setAccount(null))
+      .finally(() => setAccountChecked(true));
   }, []);
 
   useEffect(() => {
@@ -152,7 +155,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           (current) =>
             current || (savedAgent && meta.agents.some((a) => a.key === savedAgent) ? savedAgent : meta.default_agent),
         );
-        setModelState(savedModel && meta.models.includes(savedModel) ? savedModel : meta.default_model);
+        // Checked below once the plan is known: own keys can unlock models the service doesn't list.
+        setModelState((current) => current || savedModel || meta.default_model);
       })
       .catch((err: Error) => !cancelled && setInfoError(err.message));
     return () => {
@@ -164,7 +168,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!account) return;
     getPlan()
       .then(setPlan)
-      .catch(() => setPlan(null));
+      .catch(() => setPlan(null))
+      .finally(() => setPlanChecked(true));
   }, [account]);
 
   useEffect(() => {
@@ -173,11 +178,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const models = useMemo(() => plan?.models ?? info?.models ?? [], [plan, info]);
 
+  // Only once every source of models has answered, so a model unlocked by the user's own key isn't
+  // dropped while the plan is still loading.
+  const modelsKnown = !!info && accountChecked && (!account || planChecked);
+
   useEffect(() => {
-    // A model saved before the plan changed, or the service default, may not be allowed.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- correcting the selection to what the plan allows
-    if (models.length && model && !models.includes(model)) setModelState(models[0]);
-  }, [models, model]);
+    if (!modelsKnown || !info || !models.length || models.includes(model)) return;
+    // The saved choice stays stored, so it comes back if the model becomes available again.
+    const fallback = models.includes(info.default_model) ? info.default_model : models[0];
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- correcting the selection to what's available
+    setModelState(fallback);
+  }, [modelsKnown, info, models, model]);
 
   const refreshThreads = useCallback(() => {
     if (!info) return;

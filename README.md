@@ -206,7 +206,8 @@ docker compose watch
 This starts PostgreSQL, the agent service (port 8080), the web UI (<http://localhost:3000>) and the
 Streamlit app (<http://localhost:8501>), and rebuilds or syncs them when you change code. The agent
 service, Streamlit and PostgreSQL are only reachable from this machine, and Compose won't start
-without `AUTH_SECRET` and `POSTGRES_PASSWORD`. After
+without `AUTH_SECRET` and `POSTGRES_PASSWORD`. In Docker, chats and the app database are always stored in
+the PostgreSQL container's volume, whatever `DATABASE_TYPE` says, so they survive rebuilds. After
 changing `pyproject.toml`, `uv.lock` or `frontend/package-lock.json`, run `docker compose up --build`.
 
 ## API and Python client

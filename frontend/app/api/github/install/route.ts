@@ -5,6 +5,7 @@ import {
   githubConfig,
   installUrl,
   randomToken,
+  safeReturnTo,
   writeOAuthState,
 } from "@/lib/server/github-session";
 
@@ -13,8 +14,7 @@ export const dynamic = "force-dynamic";
 export function GET(req: NextRequest) {
   const config = githubConfig();
   if (!config?.appSlug) return NextResponse.redirect(MANAGE_INSTALLATIONS_URL);
-  const requested = req.nextUrl.searchParams.get("returnTo") ?? "/";
-  const returnTo = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  const returnTo = safeReturnTo(req.nextUrl.searchParams.get("returnTo"));
   const oauth = { state: randomToken(), returnTo };
   const res = NextResponse.redirect(installUrl(config.appSlug, oauth.state));
   writeOAuthState(res, req, oauth, config.key);

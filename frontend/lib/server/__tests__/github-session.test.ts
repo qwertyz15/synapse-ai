@@ -2,7 +2,15 @@ import { createHash } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { canRefresh, needsRefresh, pkceChallenge, seal, unseal, type GithubSession } from "../github-session";
+import {
+  canRefresh,
+  needsRefresh,
+  pkceChallenge,
+  safeReturnTo,
+  seal,
+  unseal,
+  type GithubSession,
+} from "../github-session";
 
 const key = createHash("sha256").update("test-secret").digest();
 const otherKey = createHash("sha256").update("other-secret").digest();
@@ -48,5 +56,19 @@ describe("token lifetime", () => {
 it("builds an RFC 7636 S256 challenge", () => {
   expect(pkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).toBe(
     "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+  );
+});
+
+describe("safeReturnTo", () => {
+  it("keeps same-site paths", () => {
+    expect(safeReturnTo("/chat/research-assistant/t1?x=1#end")).toBe("/chat/research-assistant/t1?x=1#end");
+    expect(safeReturnTo(null)).toBe("/");
+  });
+
+  it.each(["//evil.com", "/\\evil.com", "/\t/evil.com", "https://evil.com/", "javascript:alert(1)"])(
+    "sends %s home",
+    (requested) => {
+      expect(safeReturnTo(requested)).toBe("/");
+    },
   );
 });

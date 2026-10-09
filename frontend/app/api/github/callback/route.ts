@@ -11,6 +11,7 @@ import {
   githubConfig,
   installUrl,
   randomToken,
+  safeReturnTo,
   unseal,
   writeOAuthState,
   writeSession,
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 const sameString = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 function backTo(req: NextRequest, returnTo: string, result: "connected" | "error", reason?: string) {
-  const url = new URL(returnTo, req.url);
+  const url = new URL(safeReturnTo(returnTo), req.url);
   url.searchParams.set("github", result);
   if (reason) url.searchParams.set("reason", reason);
   const res = NextResponse.redirect(url);

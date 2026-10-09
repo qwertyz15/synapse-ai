@@ -86,6 +86,17 @@ export function unseal<T>(sealed: string | undefined, key: Buffer): T | null {
 
 export const randomToken = () => randomBytes(32).toString("base64url");
 
+/** A same-site path to return to after GitHub; anything that resolves to another origin becomes "/". */
+export function safeReturnTo(requested: string | null | undefined): string {
+  const base = "http://same.invalid";
+  try {
+    const url = new URL(requested || "/", base);
+    return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : "/";
+  } catch {
+    return "/";
+  }
+}
+
 export const pkceChallenge = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
 
 export function redirectUri(req: NextRequest): string {

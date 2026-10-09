@@ -49,7 +49,7 @@ def no_generated_titles():
 
 @pytest.fixture(autouse=True)
 def vector_store(tmp_path):
-    """Give every test its own embedded Qdrant and uploads folders, and no Redis."""
+    """Give every test its own embedded Qdrant and uploads folders, no Redis and no AUTH_SECRET."""
     from core.settings import settings
 
     with (
@@ -57,6 +57,8 @@ def vector_store(tmp_path):
         patch.object(settings, "QDRANT_URL", None),
         patch.object(settings, "UPLOADS_DIR", str(tmp_path / "uploads")),
         patch.object(settings, "REDIS_URL", None),
+        # Tests call the API without a bearer token, whatever the developer's .env says.
+        patch.object(settings, "AUTH_SECRET", None),
     ):
         yield
 

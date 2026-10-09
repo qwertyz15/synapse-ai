@@ -18,3 +18,4 @@ frontend/.env*
 app.db
 app.db-*
 qdrant_data
+uploads

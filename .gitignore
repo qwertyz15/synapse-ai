@@ -204,3 +204,4 @@ smoke_live_app_failure.png
 app.db
 app.db-*
 qdrant_data/
+uploads/

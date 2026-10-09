@@ -49,12 +49,14 @@ def no_generated_titles():
 
 @pytest.fixture(autouse=True)
 def vector_store(tmp_path):
-    """Give every test its own embedded Qdrant folder instead of the developer's store."""
+    """Give every test its own embedded Qdrant and uploads folders, and no Redis."""
     from core.settings import settings
 
     with (
         patch.object(settings, "QDRANT_PATH", str(tmp_path / "qdrant")),
         patch.object(settings, "QDRANT_URL", None),
+        patch.object(settings, "UPLOADS_DIR", str(tmp_path / "uploads")),
+        patch.object(settings, "REDIS_URL", None),
     ):
         yield
 

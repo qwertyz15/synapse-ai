@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { appUrl } from "@/lib/server/app-url";
 import { USER_COOKIE } from "@/lib/constants";
 import {
   SIGN_IN_COOKIE,
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 const sameString = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 function toLogin(req: NextRequest, error: string) {
-  const res = NextResponse.redirect(new URL(`/login?error=${error}`, req.url));
+  const res = NextResponse.redirect(appUrl(`/login?error=${error}`, req));
   clearSignInState(res, req);
   return res;
 }
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
     if (profile.email_verified !== true) return toLogin(req, "unverified");
     const result = await signInToService(profile, req.cookies.get(USER_COOKIE)?.value);
     if (!result.ok) return toLogin(req, result.reason);
-    const res = NextResponse.redirect(new URL(safeReturnTo(saved.returnTo), req.url));
+    const res = NextResponse.redirect(appUrl(safeReturnTo(saved.returnTo), req));
     clearSignInState(res, req);
     writeAccount(res, req, result.account);
     return res;

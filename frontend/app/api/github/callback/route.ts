@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { appUrl } from "@/lib/server/app-url";
 import {
   OAUTH_COOKIE,
   SESSION_COOKIE,
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic";
 const sameString = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 function backTo(req: NextRequest, returnTo: string, result: "connected" | "error", reason?: string) {
-  const url = new URL(safeReturnTo(returnTo), req.url);
+  const url = appUrl(safeReturnTo(returnTo), req);
   url.searchParams.set("github", result);
   if (reason) url.searchParams.set("reason", reason);
   const res = NextResponse.redirect(url);

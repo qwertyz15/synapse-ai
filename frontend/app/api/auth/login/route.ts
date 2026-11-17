@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { appUrl } from "@/lib/server/app-url";
 import { authEnabled, googleAuthorizeUrl, googleConfig, writeSignInState } from "@/lib/server/account";
 import { randomToken, safeReturnTo } from "@/lib/server/session-crypto";
 
 export const dynamic = "force-dynamic";
 
 export function GET(req: NextRequest) {
-  if (!authEnabled()) return NextResponse.redirect(new URL("/", req.url));
+  if (!authEnabled()) return NextResponse.redirect(appUrl("/", req));
   const config = googleConfig();
-  if (!config) return NextResponse.redirect(new URL("/login?error=not_configured", req.url));
+  if (!config) return NextResponse.redirect(appUrl("/login?error=not_configured", req));
   const state = {
     state: randomToken(),
     verifier: randomToken(),
